@@ -11,12 +11,22 @@ Currently, two official plugins are available:
 
 The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
+<<<<<<< HEAD
 ## React Router
 
 ```bash
 npm install react-router-dom
 ```
 
+=======
+## React Route
+```
+npm install react-route-dom
+```
+
+
+
+>>>>>>> 1e4df488adcbca0d242f07ae500a2897cdd954ad
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
