@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import './App.css'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Dashboard from './page/dashboard'
@@ -8,11 +9,13 @@ import Reservation from './page/Reservation'
 import Sidebar from './components/Sidebar'
 
 function App() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
   return (
     <BrowserRouter>
       <div className="min-h-screen">
-        <Sidebar />
-        <main className="ml-72">
+        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        <main className={`transition-all duration-300 ${sidebarCollapsed ? 'ml-20' : 'ml-80'}`}>
           <div className="">
             <Routes>
               <Route path="/" element={<Dashboard />} />

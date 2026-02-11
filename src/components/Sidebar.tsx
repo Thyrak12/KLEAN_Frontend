@@ -7,6 +7,8 @@ import {
   UtensilsCrossed,
   MessageSquareMore,
   CalendarCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 const menuItems = [
@@ -17,33 +19,67 @@ const menuItems = [
   { to: "/reservation", label: "Reservation", icon: CalendarCheck },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-72 bg-white flex flex-col justify-between shadow-lg z-20 overflow-hidden">
-      {/* ── Logo ── */}
+    <aside
+      className={`fixed left-0 top-0 bottom-0 bg-white flex flex-col justify-between shadow-lg z-20 overflow-hidden transition-all duration-300 ${
+        collapsed ? "w-20" : "w-80"
+      }`}
+    >
+      {/* ── Top section ── */}
       <div>
-        <div className="flex flex-col items-center pt-6 pb-4">
-          <img src={logo} alt="Klean Logo" className="w-30 h-30 object-contain mb-2" />
+        {/* Logo + Toggle */}
+        <div className="flex flex-col items-center pt-6 pb-4 relative">
+          {!collapsed && (
+            <img
+              src={logo}
+              alt="Klean Logo"
+              className="w-30 h-30 object-contain mb-2 transition-opacity duration-200"
+            />
+          )}
+
+          <button
+            onClick={onToggle}
+            className={`p-2 rounded-lg hover:bg-amber-100 text-gray-500 hover:text-gray-800 transition-colors ${
+              collapsed ? "mt-2" : "absolute top-3 right-3"
+            }`}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? (
+              <PanelLeftOpen size={22} />
+            ) : (
+              <PanelLeftClose size={22} />
+            )}
+          </button>
         </div>
 
         {/* ── Navigation ── */}
-        <nav className="px-4 mt-2 space-y-1">
+        <nav className={`mt-2 space-y-1 ${collapsed ? "px-2" : "px-4"}`}>
           {menuItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
               end={to === "/"}
+              title={collapsed ? label : undefined}
               className={({ isActive }) =>
                 [
-                  "flex items-center gap-4 px-5 py-4 rounded-xl text-base font-medium transition-colors",
+                  "flex items-center rounded-xl font-medium transition-all duration-200",
+                  collapsed
+                    ? "justify-center px-0 py-3.5 text-sm"
+                    : "gap-4 px-5 py-4 text-base",
                   isActive
                     ? "bg-amber-400 text-white shadow-md"
                     : "!text-gray-500 hover:bg-amber-100 hover:!text-gray-800",
                 ].join(" ")
               }
             >
-              <Icon size={22} strokeWidth={2} />
-              <span>{label}</span>
+              <Icon size={22} strokeWidth={2} className="flex-shrink-0" />
+              {!collapsed && <span>{label}</span>}
             </NavLink>
           ))}
         </nav>
