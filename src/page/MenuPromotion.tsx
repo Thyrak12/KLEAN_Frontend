@@ -209,7 +209,7 @@ export default function MenuPromotion() {
             View all <ChevronRight size={16} />
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-5">
+        <div className="flex overflow-x-auto gap-5 pb-4">
           {menuItems.map((item) => (
             <MenuCard key={item.id} item={item} />
           ))}
@@ -224,7 +224,7 @@ export default function MenuPromotion() {
             View all <ChevronRight size={16} />
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-5">
+        <div className="flex overflow-x-auto gap-5 pb-4">
           {promotionItems.map((item) => (
             <PromotionCard key={item.id} item={item} />
           ))}
