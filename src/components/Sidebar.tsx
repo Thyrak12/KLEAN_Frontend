@@ -1,5 +1,5 @@
-import { NavLink } from "react-router-dom";
-import logo from '../assets/logo.png';
+import { NavLink, useLocation } from "react-router-dom";
+import logo from "../assets/logo.png";
 
 import {
   LayoutDashboard,
@@ -9,6 +9,8 @@ import {
   CalendarCheck,
   PanelLeftClose,
   PanelLeftOpen,
+  Users,
+  Settings,
 } from "lucide-react";
 
 const menuItems = [
@@ -19,12 +21,32 @@ const menuItems = [
   { to: "/reservation", label: "Reservation", icon: CalendarCheck },
 ];
 
+const adminItems = [
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  {
+    to: "/admin/restaurants-manage",
+    label: "Restaurant Management",
+    icon: Store,
+  },
+  { to: "/admin/users", label: "Users Management", icon: Users },
+  {
+    to: "/admin/restaurants-request",
+    label: "Reservation Requests",
+    icon: MessageSquareMore,
+  },
+  { to: "/admin/settings", label: "Settings", icon: Settings },
+];
+
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
 }
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith("/admin");
+  const items = isAdminRoute ? adminItems : menuItems;
+
   return (
     <aside
       className={`fixed left-0 top-0 bottom-0 bg-white flex flex-col justify-between shadow-lg z-20 overflow-hidden transition-all duration-300 ${
@@ -60,11 +82,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
         {/* ── Navigation ── */}
         <nav className={`mt-2 space-y-1 ${collapsed ? "px-2" : "px-4"}`}>
-          {menuItems.map(({ to, label, icon: Icon }) => (
+          {items.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
-              end={to === "/"}
+              end={to === "/" || to === "/admin"}
               title={collapsed ? label : undefined}
               className={({ isActive }) =>
                 [
