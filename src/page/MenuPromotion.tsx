@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Plus, Pencil, Trash2, ChevronRight } from "lucide-react";
+import EditMenuPromo from "./editMenuPromo";
 
 
 
@@ -111,7 +113,7 @@ const promotionItems: PromotionItem[] = [
 ];
 
 // ── Menu Card ──────────────────────────────────────────────
-function MenuCard({ item }: { item: MenuItem }) {
+function MenuCard({ item, onEditClick }: { item: MenuItem; onEditClick: () => void }) {
     
   return (
     <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col items-center gap-3 w-[200px]">
@@ -127,7 +129,7 @@ function MenuCard({ item }: { item: MenuItem }) {
       </h4>
       <span className="text-lg font-bold text-gray-800">{item.price}$</span>
       <div className="flex items-center gap-2 mt-1">
-        <button className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-white text-xs font-semibold px-3 py-1.5 rounded-md transition-colors">
+        <button onClick={onEditClick} className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-white text-xs font-semibold px-3 py-1.5 rounded-md transition-colors">
           <Pencil size={13} />
           Edit
         </button>
@@ -142,7 +144,7 @@ function MenuCard({ item }: { item: MenuItem }) {
 
 
 // ── Promotion Card ─────────────────────────────────────────
-function PromotionCard({ item }: { item: PromotionItem }) {
+function PromotionCard({ item, onEditClick }: { item: PromotionItem; onEditClick: () => void }) {
   return (
     <div className="relative bg-white rounded-2xl shadow-sm p-5 flex flex-col items-center gap-3 w-[200px]">
       {/* Discount badge */}
@@ -169,7 +171,7 @@ function PromotionCard({ item }: { item: PromotionItem }) {
         </span>
       </div>
       <div className="flex items-center gap-2 mt-1">
-        <button className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-white text-xs font-semibold px-3 py-1.5 rounded-md transition-colors">
+        <button onClick={onEditClick} className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-white text-xs font-semibold px-3 py-1.5 rounded-md transition-colors">
           <Pencil size={13} />
           Edit
         </button>
@@ -184,6 +186,8 @@ function PromotionCard({ item }: { item: PromotionItem }) {
 
 // ── Page ───────────────────────────────────────────────────
 export default function MenuPromotion() {
+  const [showEditModal, setShowEditModal] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       {/* ── Header ── */}
@@ -209,9 +213,9 @@ export default function MenuPromotion() {
             View all <ChevronRight size={16} />
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-5">
+        <div className="flex overflow-x-auto gap-5 pb-4">
           {menuItems.map((item) => (
-            <MenuCard key={item.id} item={item} />
+            <MenuCard key={item.id} item={item} onEditClick={() => setShowEditModal(true)} />
           ))}
         </div>
       </div>
@@ -224,12 +228,19 @@ export default function MenuPromotion() {
             View all <ChevronRight size={16} />
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-5">
+        <div className="flex overflow-x-auto gap-5 pb-4">
           {promotionItems.map((item) => (
-            <PromotionCard key={item.id} item={item} />
+            <PromotionCard key={item.id} item={item} onEditClick={() => setShowEditModal(true)} />
           ))}
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <EditMenuPromo onClose={() => setShowEditModal(false)} />
+        </div>
+      )}
     </div>
   );
 }
