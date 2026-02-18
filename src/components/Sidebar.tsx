@@ -17,6 +17,7 @@ const menuItems = [
   { to: "/menus", label: "Menu & Promotions", icon: UtensilsCrossed },
   { to: "/feedback", label: "Feedback Monitor", icon: MessageSquareMore },
   { to: "/reservation", label: "Reservation", icon: CalendarCheck },
+  { to: "/setting", label: "Settings", icon: Store },
 ];
 
 interface SidebarProps {

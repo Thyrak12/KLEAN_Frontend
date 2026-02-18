@@ -9,6 +9,7 @@ import Reservation from './page/Reservation'
 import Sidebar from './components/Sidebar'
 import Login from './page/Login'
 import SignUp from './page/SignUp'
+import Setting from './page/setting'
 
 function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -30,6 +31,7 @@ function AppLayout() {
             <Route path="/menus" element={<MenuPromotion />} />
             <Route path="/feedback" element={<FeedbackMonitor />} />
             <Route path="/reservation" element={<Reservation />} />
+            <Route path="/setting" element={<Setting />} />
           </Routes>
         </div>
       </main>
