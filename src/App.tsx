@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from './config/firebase' // Import your firebase auth instance
+
 import Dashboard from './page/dashboard'
 import RestaurantProfile from './page/RestaurantProfile'
 import MenuPromotion from './page/MenuPromotion'
@@ -10,14 +13,29 @@ import Sidebar from './components/Sidebar'
 import Login from './page/Login'
 import SignUp from './page/SignUp'
 import Setting from './page/setting'
+import Onbording1 from './features/onBording/Onbording1'
+import Onbording2 from './features/onBording/Onbording2'
+import OnboardingGuard from './components/OnboardingGuard'
 
 function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const location = useLocation()
-  const isLoginPage = location.pathname === '/login'
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null) // null = loading
 
-  if (isLoginPage) {
-    return <Login />
+  useEffect(() => {
+    // Listen for Firebase auth state changes
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsAuthenticated(!!user)
+    })
+    return () => unsubscribe()
+  }, [])
+
+  // Show nothing or a loading spinner while checking auth status
+  if (isAuthenticated === null) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
   }
 
   return (
@@ -43,8 +61,13 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/onbording1" element={<OnboardingGuard><Onbording1 /></OnboardingGuard>} />
+        <Route path="/onbording2" element={<OnboardingGuard><Onbording2 /></OnboardingGuard>} />
+        
+        {/* Protected Routes Wrapper */}
         <Route path="/*" element={<AppLayout />} />
       </Routes>
     </BrowserRouter>
