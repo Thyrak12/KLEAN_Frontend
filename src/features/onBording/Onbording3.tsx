@@ -84,7 +84,8 @@ const Onbording3 = () => {
       });
     } catch (error) {
       console.error("Error saving onboarding data:", error);
-      alert("Something went wrong while saving data. Please try again.");
+      const message = error instanceof Error ? error.message : "Unknown error";
+      alert(`Something went wrong: ${message}`);
     } finally {
       setIsLoading(false);
     }

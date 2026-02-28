@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, DollarSign } from "lucide-react";
-import { doc, setDoc } from "firebase/firestore";
-import { auth, db } from "../../config/firebase";
+import { useOnboarding } from "./OnboardingContext";
 
 const CATEGORY_OPTIONS = [
   "BBQ", "Buffet", "Café", "Chinese", "Fast Food", "Fine Dining",
@@ -70,32 +69,26 @@ const PriceRow = ({
 
 const Register2 = () => {
   const navigate = useNavigate();
+  const { step2, setStep2 } = useOnboarding();
 
-  const toNumberOrNull = (value: string): number | null => {
-    const trimmed = value.trim();
-    if (trimmed === "") return null;
-
-    const parsed = Number(trimmed);
-    return Number.isNaN(parsed) ? null : parsed;
-  };
-
-  const [category, setCategory] = useState("");
+  // Initialize local state from context (persists across navigation)
+  const [category, setCategory] = useState(step2.category);
   const [categoryOpen, setCategoryOpen] = useState(false);
-  const [ambience, setAmbience] = useState<string[]>([]);
+  const [ambience, setAmbience] = useState<string[]>(step2.ambience);
   const [ambienceOpen, setAmbienceOpen] = useState(false);
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>(step2.amenities);
 
-  // Pricing state
-  const [mainDishMin, setMainDishMin] = useState("");
-  const [mainDishMax, setMainDishMax] = useState("");
-  const [beverageMin, setBeverageMin] = useState("");
-  const [beverageMax, setBeverageMax] = useState("");
-  const [signatureMin, setSignatureMin] = useState("");
-  const [signatureMax, setSignatureMax] = useState("");
-  const [bestSellingMin, setBestSellingMin] = useState("");
-  const [bestSellingMax, setBestSellingMax] = useState("");
-  const [groupSpendMin, setGroupSpendMin] = useState("");
-  const [groupSpendMax, setGroupSpendMax] = useState("");
+  // Pricing state (initialized from context)
+  const [mainDishMin, setMainDishMin] = useState(step2.mainDishMin);
+  const [mainDishMax, setMainDishMax] = useState(step2.mainDishMax);
+  const [beverageMin, setBeverageMin] = useState(step2.beverageMin);
+  const [beverageMax, setBeverageMax] = useState(step2.beverageMax);
+  const [signatureMin, setSignatureMin] = useState(step2.signatureMin);
+  const [signatureMax, setSignatureMax] = useState(step2.signatureMax);
+  const [bestSellingMin, setBestSellingMin] = useState(step2.bestSellingMin);
+  const [bestSellingMax, setBestSellingMax] = useState(step2.bestSellingMax);
+  const [groupSpendMin, setGroupSpendMin] = useState(step2.groupSpendMin);
+  const [groupSpendMax, setGroupSpendMax] = useState(step2.groupSpendMax);
 
   const toggleAmenity = (amenity: string) => {
     setSelectedAmenities((prev) =>
@@ -111,32 +104,27 @@ const Register2 = () => {
     );
   };
 
-  const handleNext = async () => {
-    const user = auth.currentUser;
-    if (!user) return;
+  // Save current form data into context
+  const saveToContext = () => {
+    setStep2({
+      category,
+      ambience,
+      amenities: selectedAmenities,
+      mainDishMin, mainDishMax,
+      beverageMin, beverageMax,
+      signatureMin, signatureMax,
+      bestSellingMin, bestSellingMax,
+      groupSpendMin, groupSpendMax,
+    });
+  };
 
-    try {
-      await setDoc(doc(db, "users", user.uid), {
-        category,
-        ambience,
-        amenities: selectedAmenities,
-        pricing: {
-          mainDish: { min: toNumberOrNull(mainDishMin), max: toNumberOrNull(mainDishMax) },
-          beverage: { min: toNumberOrNull(beverageMin), max: toNumberOrNull(beverageMax) },
-          signature: { min: toNumberOrNull(signatureMin), max: toNumberOrNull(signatureMax) },
-          bestSelling: { min: toNumberOrNull(bestSellingMin), max: toNumberOrNull(bestSellingMax) },
-          groupSpend: { min: toNumberOrNull(groupSpendMin), max: toNumberOrNull(groupSpendMax) },
-        },
-        onboardingCompleted: true,
-      }, { merge: true });
-
-      navigate("/onbording3");
-    } catch (error) {
-      console.error("Error saving onboarding data:", error);
-    }
+  const handleNext = () => {
+    saveToContext();
+    navigate("/onbording3");
   };
 
   const handleBack = () => {
+    saveToContext();
     navigate("/onbording1");
   };
 

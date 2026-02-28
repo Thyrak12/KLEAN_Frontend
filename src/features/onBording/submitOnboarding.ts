@@ -27,19 +27,30 @@ export async function submitOnboarding({
 
   setStep3(step3Values);
 
+  // 1. Upload cover image (if provided)
   let coverImageUrl = "";
   if (step1.coverImage) {
-    const imageRef = ref(storage, `restaurant_covers/${user.uid}_${Date.now()}`);
-    await uploadBytes(imageRef, step1.coverImage);
-    coverImageUrl = await getDownloadURL(imageRef);
+    try {
+      const imageRef = ref(storage, `restaurant_covers/${user.uid}_${Date.now()}`);
+      await uploadBytes(imageRef, step1.coverImage);
+      coverImageUrl = await getDownloadURL(imageRef);
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      throw new Error("Failed to upload cover image. Check Firebase Storage rules.");
+    }
   }
+
+  // 2. Build data objects
+  const userData = {
+    uid: user.uid,
+    email: user.email,
+    role: "restaurant_owner",
+    createdAt: new Date(),
+    onboardingCompleted: true,
+  };
 
   const restaurantData = {
     uid: user.uid,
-    email: user.email,
-    createdAt: new Date(),
-    onboardingCompleted: true,
-    role: "restaurant_owner",
     restaurantName: step1.restaurantName,
     phone: step1.phone,
     contactInfo: step1.contactInfo,
@@ -63,7 +74,23 @@ export async function submitOnboarding({
     dinerTypes: step3Values.dinerTypes,
   };
 
-  await setDoc(doc(db, "users", user.uid), restaurantData, { merge: true });
-  console.log("Registration Complete:", restaurantData);
+  // 3. Save user data
+  try {
+    await setDoc(doc(db, "users", user.uid), userData, { merge: true });
+  } catch (err) {
+    console.error("Failed to write to 'users' collection:", err);
+    throw new Error("Failed to save user data. Check Firestore rules for 'users' collection.");
+  }
+
+  // 4. Save restaurant data
+  try {
+    await setDoc(doc(db, "restaurants", user.uid), restaurantData, { merge: true });
+  } catch (err) {
+    console.error("Failed to write to 'restaurants' collection:", err);
+    throw new Error("Failed to save restaurant data. Check Firestore rules for 'restaurants' collection.");
+  }
+
+  console.log("User Data:", userData);
+  console.log("Restaurant Data:", restaurantData);
   navigate("/");
 }

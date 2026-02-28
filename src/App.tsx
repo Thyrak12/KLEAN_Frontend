@@ -1,14 +1,8 @@
-import { useState, useEffect } from "react";
-import "./App.css";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-  Outlet,
-} from "react-router-dom";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "./config/firebase"; // Import your firebase auth instance
+import { useState } from 'react'
+import './App.css'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+
+import { AuthProvider, useAuth } from './features/auth/AuthContext'
 
 import Dashboard from "./page/dashboard";
 import RestaurantProfile from "./page/RestaurantProfile";
@@ -31,28 +25,26 @@ import AdminRestaurantRequests from "./page/admin/restaurant-request";
 import AdminSettings from "./page/admin/setting";
 
 function AppLayout() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null = loading
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const { user, role, loading } = useAuth()
 
-  useEffect(() => {
-    // Listen for Firebase auth state changes
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setIsAuthenticated(!!user);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Show nothing or a loading spinner while checking auth status
-  if (isAuthenticated === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading...
-      </div>
-    );
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  // Not logged in → redirect to login
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+
+  // Logged in but no role yet (hasn't completed onboarding) → redirect to onboarding
+  if (!role) {
+    return <Navigate to="/onbording1" replace />
+  }
+
+  // Only restaurant_owner and admin can access the dashboard
+  if (role !== 'restaurant_owner' && role !== 'admin') {
+    return <Navigate to="/login" replace />
   }
 
   return (
@@ -94,50 +86,25 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<SignUp />} />
-        {/* Onboarding Routes — single provider keeps data alive across steps */}
-        <Route
-          element={
-            <OnboardingProvider>
-              <Outlet />
-            </OnboardingProvider>
-          }
-        >
-          <Route
-            path="/onbording1"
-            element={
-              <OnboardingGuard>
-                <Onbording1 />
-              </OnboardingGuard>
-            }
-          />
-          <Route
-            path="/onbording2"
-            element={
-              <OnboardingGuard>
-                <Onbording2 />
-              </OnboardingGuard>
-            }
-          />
-          <Route
-            path="/onbording3"
-            element={
-              <OnboardingGuard>
-                <Onbording3 />
-              </OnboardingGuard>
-            }
-          />
-        </Route>
-
-        {/* Protected Routes Wrapper */}
-        <Route path="/*" element={<AppLayout />} />
-      </Routes>
-    </BrowserRouter>
-  );
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
+          {/* Onboarding Routes — single provider keeps data alive across steps */}
+          <Route element={<OnboardingProvider><Outlet /></OnboardingProvider>}>
+            <Route path="/onbording1" element={<OnboardingGuard><Onbording1 /></OnboardingGuard>} />
+            <Route path="/onbording2" element={<OnboardingGuard><Onbording2 /></OnboardingGuard>} />
+            <Route path="/onbording3" element={<OnboardingGuard><Onbording3 /></OnboardingGuard>} />
+          </Route>
+          
+          {/* Protected Routes Wrapper */}
+          <Route path="/*" element={<AppLayout />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  )
 }
 
 export default App;
