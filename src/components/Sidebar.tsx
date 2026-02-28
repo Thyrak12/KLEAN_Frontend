@@ -32,7 +32,7 @@ const adminItems = [
   { to: "/admin/users", label: "Users Management", icon: Users },
   {
     to: "/admin/restaurants-request",
-    label: "Reservation Requests",
+    label: "Restraurant Requests",
     icon: MessageSquareMore,
   },
   { to: "/admin/settings", label: "Settings", icon: Settings },
