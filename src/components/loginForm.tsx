@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { auth } from "../config/firebase";
+import { auth, db } from "../config/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth/web-extension";
+import { doc, getDoc } from "firebase/firestore";
 import logo from "../assets/logo.png"; // Adjust the path if needed
 
 export default function Login() {
@@ -17,7 +18,30 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // 1. Authenticate with Firebase — fails if account doesn't exist
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+
+      // 2. Check if user doc exists in Firestore 'users' collection
+      const userDoc = await getDoc(doc(db, "users", uid));
+      if (!userDoc.exists()) {
+        // Account exists in Firebase Auth but no user doc in Firestore → deny access
+        await auth.signOut();
+        setError("Account not found. Please contact support.");
+        return;
+      }
+
+      // 3. Compare role — only restaurant_owner is allowed
+      const data = userDoc.data();
+      const role = data?.role;
+
+      if (role !== "restaurant_owner") {
+        await auth.signOut();
+        setError("Access denied. Only restaurant owners can log in.");
+        return;
+      }
+
+      // 4. Role is restaurant_owner → allow access
       navigate("/");
     } catch {
       setError("Invalid email or password. Please try again.");
