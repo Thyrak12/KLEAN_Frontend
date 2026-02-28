@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import './App.css'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './config/firebase' // Import your firebase auth instance
 
@@ -15,7 +15,9 @@ import SignUp from './page/SignUp'
 import Setting from './page/setting'
 import Onbording1 from './features/onBording/Onbording1'
 import Onbording2 from './features/onBording/Onbording2'
+import Onbording3 from './features/onBording/Onbording3'
 import OnboardingGuard from './components/OnboardingGuard'
+import { OnboardingProvider } from './features/onBording/OnboardingContext'
 
 function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -64,8 +66,12 @@ function App() {
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
-        <Route path="/onbording1" element={<OnboardingGuard><Onbording1 /></OnboardingGuard>} />
-        <Route path="/onbording2" element={<OnboardingGuard><Onbording2 /></OnboardingGuard>} />
+        {/* Onboarding Routes — single provider keeps data alive across steps */}
+        <Route element={<OnboardingProvider><Outlet /></OnboardingProvider>}>
+          <Route path="/onbording1" element={<OnboardingGuard><Onbording1 /></OnboardingGuard>} />
+          <Route path="/onbording2" element={<OnboardingGuard><Onbording2 /></OnboardingGuard>} />
+          <Route path="/onbording3" element={<OnboardingGuard><Onbording3 /></OnboardingGuard>} />
+        </Route>
         
         {/* Protected Routes Wrapper */}
         <Route path="/*" element={<AppLayout />} />

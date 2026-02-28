@@ -71,6 +71,14 @@ const PriceRow = ({
 const Register2 = () => {
   const navigate = useNavigate();
 
+  const toNumberOrNull = (value: string): number | null => {
+    const trimmed = value.trim();
+    if (trimmed === "") return null;
+
+    const parsed = Number(trimmed);
+    return Number.isNaN(parsed) ? null : parsed;
+  };
+
   const [category, setCategory] = useState("");
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [ambience, setAmbience] = useState<string[]>([]);
@@ -113,16 +121,16 @@ const Register2 = () => {
         ambience,
         amenities: selectedAmenities,
         pricing: {
-          mainDish: { min: mainDishMin, max: mainDishMax },
-          beverage: { min: beverageMin, max: beverageMax },
-          signature: { min: signatureMin, max: signatureMax },
-          bestSelling: { min: bestSellingMin, max: bestSellingMax },
-          groupSpend: { min: groupSpendMin, max: groupSpendMax },
+          mainDish: { min: toNumberOrNull(mainDishMin), max: toNumberOrNull(mainDishMax) },
+          beverage: { min: toNumberOrNull(beverageMin), max: toNumberOrNull(beverageMax) },
+          signature: { min: toNumberOrNull(signatureMin), max: toNumberOrNull(signatureMax) },
+          bestSelling: { min: toNumberOrNull(bestSellingMin), max: toNumberOrNull(bestSellingMax) },
+          groupSpend: { min: toNumberOrNull(groupSpendMin), max: toNumberOrNull(groupSpendMax) },
         },
         onboardingCompleted: true,
       }, { merge: true });
 
-      navigate("/");
+      navigate("/onbording3");
     } catch (error) {
       console.error("Error saving onboarding data:", error);
     }
