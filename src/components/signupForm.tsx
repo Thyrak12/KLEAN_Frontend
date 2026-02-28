@@ -29,7 +29,7 @@ export default function SignUpForm() {
     setLoading(true);
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      navigate("/");
+      navigate("/onbording1");
     } catch {
       setError("Failed to create account. Please try again.");
     } finally {
