@@ -9,7 +9,6 @@ import Dashboard from './page/dashboard'
 import RestaurantProfile from './page/RestaurantProfile'
 import MenuPromotion from './page/MenuPromotionNew'
 import FeedbackMonitor from './page/FeedbackMonitor'
-import Reservation from './page/Reservation'
 import Sidebar from './components/Sidebar'
 import Login from './page/Login'
 import SignUp from './page/SignUp'
@@ -53,7 +52,6 @@ function AppLayout() {
             <Route path="/profile" element={<RestaurantProfile />} />
             <Route path="/menus" element={<MenuPromotion />} />
             <Route path="/feedback" element={<FeedbackMonitor />} />
-            <Route path="/reservation" element={<Reservation />} />
             <Route path="/setting" element={<Setting />} />
           </Routes>
         </div>

@@ -21,6 +21,7 @@ import type {
   UpdatePromotionInput,
   MenuCategory,
   PromotionStatus,
+  PromotionType,
 } from "../../types/menu";
 
 // Helper to get current user ID
@@ -69,7 +70,6 @@ export async function fetchMenuItems(): Promise<MenuItem[]> {
     description: doc.data().description || "",
     price: doc.data().price || 0,
     category: doc.data().category as MenuCategory,
-    available: doc.data().available ?? true,
     image: doc.data().image || "",
     created_at: doc.data().created_at?.toDate() || new Date(),
     updated_at: doc.data().updated_at?.toDate() || new Date(),
@@ -86,7 +86,6 @@ export async function createMenuItem(input: CreateMenuItemInput): Promise<MenuIt
     description: input.description,
     price: input.price,
     category: input.category,
-    available: input.available ?? true,
     image: input.image || "",
     created_at: serverTimestamp(),
     updated_at: serverTimestamp(),
@@ -99,7 +98,6 @@ export async function createMenuItem(input: CreateMenuItemInput): Promise<MenuIt
     description: input.description,
     price: input.price,
     category: input.category,
-    available: input.available ?? true,
     image: input.image,
     created_at: new Date(),
     updated_at: new Date(),
@@ -118,7 +116,6 @@ export async function updateMenuItem(input: UpdateMenuItemInput): Promise<MenuIt
   if (input.description !== undefined) updateData.description = input.description;
   if (input.price !== undefined) updateData.price = input.price;
   if (input.category !== undefined) updateData.category = input.category;
-  if (input.available !== undefined) updateData.available = input.available;
   if (input.image !== undefined) updateData.image = input.image;
   
   await updateDoc(docRef, updateData);
@@ -134,7 +131,6 @@ export async function updateMenuItem(input: UpdateMenuItemInput): Promise<MenuIt
     description: data?.description || "",
     price: data?.price || 0,
     category: data?.category as MenuCategory,
-    available: data?.available ?? true,
     image: data?.image || "",
     created_at: data?.created_at?.toDate() || new Date(),
     updated_at: data?.updated_at?.toDate() || new Date(),
@@ -174,6 +170,7 @@ export async function fetchPromotions(): Promise<Promotion[]> {
     start_date: doc.data().start_date?.toDate() || new Date(),
     end_date: doc.data().end_date?.toDate() || new Date(),
     status: doc.data().status as PromotionStatus,
+    promotion_type: (doc.data().promotion_type as PromotionType) || "restaurant",
     menu_item_id: doc.data().menu_item_id,
     discount_percentage: doc.data().discount_percentage || 0,
     created_at: doc.data().created_at?.toDate() || new Date(),
@@ -192,7 +189,8 @@ export async function createPromotion(input: CreatePromotionInput): Promise<Prom
     start_date: input.start_date,
     end_date: input.end_date,
     status: input.status,
-    menu_item_id: input.menu_item_id,
+    promotion_type: input.promotion_type,
+    menu_item_id: input.menu_item_id || null,
     discount_percentage: input.discount_percentage || 0,
     created_at: serverTimestamp(),
     updated_at: serverTimestamp(),
@@ -206,6 +204,7 @@ export async function createPromotion(input: CreatePromotionInput): Promise<Prom
     start_date: input.start_date,
     end_date: input.end_date,
     status: input.status,
+    promotion_type: input.promotion_type,
     menu_item_id: input.menu_item_id,
     discount_percentage: input.discount_percentage,
     created_at: new Date(),
@@ -226,6 +225,7 @@ export async function updatePromotion(input: UpdatePromotionInput): Promise<Prom
   if (input.start_date !== undefined) updateData.start_date = input.start_date;
   if (input.end_date !== undefined) updateData.end_date = input.end_date;
   if (input.status !== undefined) updateData.status = input.status;
+  if (input.promotion_type !== undefined) updateData.promotion_type = input.promotion_type;
   if (input.menu_item_id !== undefined) updateData.menu_item_id = input.menu_item_id;
   if (input.discount_percentage !== undefined) updateData.discount_percentage = input.discount_percentage;
   
@@ -243,6 +243,7 @@ export async function updatePromotion(input: UpdatePromotionInput): Promise<Prom
     start_date: data?.start_date?.toDate() || new Date(),
     end_date: data?.end_date?.toDate() || new Date(),
     status: data?.status as PromotionStatus,
+    promotion_type: (data?.promotion_type as PromotionType) || "restaurant",
     menu_item_id: data?.menu_item_id,
     discount_percentage: data?.discount_percentage || 0,
     created_at: data?.created_at?.toDate() || new Date(),

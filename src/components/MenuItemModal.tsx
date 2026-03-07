@@ -19,7 +19,6 @@ interface FormDataInternal {
   description: string;
   price: string;
   category: string;
-  available: boolean;
   image: string;
 }
 
@@ -38,7 +37,6 @@ export default function MenuItemModal({
     description: "",
     price: "",
     category: "main_course",
-    available: true,
     image: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -52,7 +50,6 @@ export default function MenuItemModal({
         description: menuItem.description,
         price: menuItem.price.toString(),
         category: menuItem.category,
-        available: menuItem.available,
         image: menuItem.image || "",
       });
     } else {
@@ -61,7 +58,6 @@ export default function MenuItemModal({
         description: "",
         price: "",
         category: "main_course",
-        available: true,
         image: "",
       });
     }
@@ -112,7 +108,6 @@ export default function MenuItemModal({
         description: formData.description,
         price: parseFloat(formData.price) || 0,
         category: formData.category as CreateMenuItemInput["category"],
-        available: formData.available,
         image: formData.image,
       };
       await onSubmit(submitData);
@@ -129,14 +124,8 @@ export default function MenuItemModal({
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    const { name, value, type } = e.target;
-    
-    if (type === "checkbox") {
-      const checked = (e.target as HTMLInputElement).checked;
-      setFormData((prev) => ({ ...prev, [name]: checked }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
     // Clear error when user starts typing
     if (errors[name]) {
@@ -208,42 +197,57 @@ export default function MenuItemModal({
               accept="image/*"
               className="hidden"
             />
-            <div className="flex gap-2">
-              <input
-                type="url"
-                name="image"
-                value={formData.image}
-                onChange={handleChange}
-                placeholder="https://example.com/image.jpg or upload"
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
-              />
+            {formData.image ? (
+              <div className="relative w-full">
+                <div className="w-full h-40 rounded-xl overflow-hidden border-2 border-gray-200">
+                  <img
+                    src={formData.image}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://via.placeholder.com/300x160?text=Image+Error";
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="absolute bottom-3 right-3 flex items-center gap-2 px-3 py-2 bg-white/90 hover:bg-white border border-gray-300 rounded-lg shadow-sm transition-colors disabled:opacity-50"
+                >
+                  {isUploading ? (
+                    <Loader2 size={16} className="text-gray-600 animate-spin" />
+                  ) : (
+                    <Upload size={16} className="text-gray-600" />
+                  )}
+                  <span className="text-sm font-medium text-gray-700">
+                    {isUploading ? "Uploading..." : "Change"}
+                  </span>
+                </button>
+              </div>
+            ) : (
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="w-full h-40 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-amber-400 hover:bg-amber-50/30 transition-colors disabled:opacity-50"
               >
                 {isUploading ? (
-                  <Loader2 size={20} className="text-gray-500 animate-spin" />
+                  <>
+                    <Loader2 size={32} className="text-amber-400 animate-spin" />
+                    <span className="text-sm text-gray-500">Uploading...</span>
+                  </>
                 ) : (
-                  <Upload size={20} className="text-gray-500" />
+                  <>
+                    <Upload size={32} className="text-gray-400" />
+                    <span className="text-sm font-medium text-gray-600">Click to upload image</span>
+                    <span className="text-xs text-gray-400">PNG, JPG up to 5MB</span>
+                  </>
                 )}
               </button>
-            </div>
+            )}
             {errors.image && (
               <p className="text-red-500 text-sm mt-1">{errors.image}</p>
-            )}
-            {formData.image && (
-              <div className="mt-2 w-24 h-24 rounded-lg overflow-hidden">
-                <img
-                  src={formData.image}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
-                />
-              </div>
             )}
           </div>
 
@@ -341,21 +345,6 @@ export default function MenuItemModal({
                 <p className="text-red-500 text-sm mt-1">{errors.category}</p>
               )}
             </div>
-          </div>
-
-          {/* Available Toggle */}
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              name="available"
-              id="available"
-              checked={formData.available}
-              onChange={handleChange}
-              className="w-5 h-5 text-amber-400 border-gray-300 rounded focus:ring-amber-400"
-            />
-            <label htmlFor="available" className="text-gray-700 font-medium">
-              Available for order
-            </label>
           </div>
 
           {/* Submit Error */}
