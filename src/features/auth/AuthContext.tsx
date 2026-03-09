@@ -7,12 +7,13 @@ import type { User } from "firebase/auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type UserRole = "restaurant_owner" | "admin" | null;
+export type UserRole = "restaurant_owner" | "admin" | "pending_owner" | null;
 
 interface AuthContextValue {
   user: User | null;
   role: UserRole;
   loading: boolean;
+  refreshUserData: () => Promise<void>;
 }
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   role: null,
   loading: true,
+  refreshUserData: async () => {},
 });
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -30,24 +32,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchUserRole = async (firebaseUser: User) => {
+    try {
+      const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        setRole((data.role as UserRole) ?? null);
+      } else {
+        // User doc doesn't exist yet (new user going through onboarding)
+        setRole(null);
+      }
+    } catch (err) {
+      console.error("Failed to fetch user role:", err);
+      setRole(null);
+    }
+  };
+
+  const refreshUserData = async () => {
+    if (user) {
+      await fetchUserRole(user);
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
 
       if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            setRole((data.role as UserRole) ?? null);
-          } else {
-            // User doc doesn't exist yet (new user going through onboarding)
-            setRole(null);
-          }
-        } catch (err) {
-          console.error("Failed to fetch user role:", err);
-          setRole(null);
-        }
+        await fetchUserRole(firebaseUser);
       } else {
         setRole(null);
       }
@@ -59,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, role, loading }}>
+    <AuthContext.Provider value={{ user, role, loading, refreshUserData }}>
       {children}
     </AuthContext.Provider>
   );

@@ -18,30 +18,30 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      // 1. Authenticate with Firebase — fails if account doesn't exist
+      // 1. Authenticate with Firebase
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
 
       // 2. Check if user doc exists in Firestore 'users' collection
       const userDoc = await getDoc(doc(db, "users", uid));
-      if (!userDoc.exists()) {
-        // Account exists in Firebase Auth but no user doc in Firestore → deny access
-        await auth.signOut();
-        setError("Account not found. Please contact support.");
-        return;
+
+      // If userDoc exists, verify they have an allowed role
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        const role = data?.role;
+
+        // Allow 'restaurant_owner', 'pending_owner', and 'admin'
+        const allowedRoles = ["restaurant_owner", "pending_owner", "admin"];
+
+        if (role && !allowedRoles.includes(role)) {
+          await auth.signOut();
+          setError("Access denied. Invalid role for this platform.");
+          return;
+        }
       }
 
-      // 3. Compare role — only restaurant_owner is allowed
-      const data = userDoc.data();
-      const role = data?.role;
-
-      if (role !== "restaurant_owner") {
-        await auth.signOut();
-        setError("Access denied. Only restaurant owners can log in.");
-        return;
-      }
-
-      // 4. Role is restaurant_owner → allow access
+      // Allow access! (App.tsx will automatically read their role via AuthContext 
+      // and redirect to Dashboard, PendingApproval, or Onbording1)
       navigate("/");
     } catch {
       setError("Invalid email or password. Please try again.");

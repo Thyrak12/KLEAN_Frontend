@@ -18,13 +18,19 @@ import Onbording2 from './features/onBording/Onbording2'
 import Onbording3 from './features/onBording/Onbording3'
 import OnboardingGuard from './components/OnboardingGuard'
 import { OnboardingProvider } from './features/onBording/OnboardingContext'
+import PendingApproval from './page/PendingApproval' // Add new import at the top
 
 function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const { user, role, loading } = useAuth()
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+    return <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+        <p className="text-lg text-gray-600">Loading your dashboard...</p>
+      </div>
+    </div>
   }
 
   // Not logged in → redirect to login
@@ -37,7 +43,12 @@ function AppLayout() {
     return <Navigate to="/onbording1" replace />
   }
 
-  // Only restaurant_owner and admin can access the dashboard
+  // NEW: Catch pending owners and route them to the pending page
+  if (role === 'pending_owner') {
+    return <PendingApproval />
+  }
+
+  // Only approved owners and admins can access the dashboard
   if (role !== 'restaurant_owner' && role !== 'admin') {
     return <Navigate to="/login" replace />
   }

@@ -30,8 +30,24 @@ export default function SignUpForm() {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       navigate("/onbording1");
-    } catch {
-      setError("Failed to create account. Please try again.");
+    } catch (err: unknown) {
+      const firebaseError = err as { code?: string };
+      switch (firebaseError.code) {
+        case "auth/email-already-in-use":
+          setError("This email is already registered. Please log in instead.");
+          break;
+        case "auth/invalid-email":
+          setError("Invalid email address.");
+          break;
+        case "auth/weak-password":
+          setError("Password is too weak. Use at least 6 characters.");
+          break;
+        case "auth/operation-not-allowed":
+          setError("Email/Password sign-up is not enabled. Please contact support.");
+          break;
+        default:
+          setError(`Failed to create account: ${firebaseError.code || "Unknown error"}`);
+      }
     } finally {
       setLoading(false);
     }

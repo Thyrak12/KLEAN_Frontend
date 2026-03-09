@@ -7,7 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 // 1. Import the hook correctly
-import { useOnboarding } from "./OnboardingContext"; // Check your path!
+import { useOnboarding } from "./OnboardingContext";
+import AddressAutocomplete from "../../components/AddressAutocomplete";
 
 // --- Validation Utils ---
 const validateCambodianPhone = (phone: string): boolean => {
@@ -23,6 +24,7 @@ const onboardingSchema = z.object({
     .refine(validateCambodianPhone, "Only 8-9 digits are allowed"),
   contactInfo: z.string().min(1, "Contact info is required"),
   address: z.string().min(5, "Address must be at least 5 characters"),
+  googleMapLink: z.string().url("Must be a valid URL").optional().or(z.literal("")),
 });
 
 type OnboardingData = z.infer<typeof onboardingSchema>;
@@ -37,6 +39,11 @@ const Onbording1 = () => {
   const [coverImage, setCoverImage] = useState<File | null>(step1.coverImage);
   const [imageError, setImageError] = useState("");
 
+  // Local state for coordinates from Google Places
+  const [latitude, setLatitude] = useState<number | null>(step1.latitude);
+  const [longitude, setLongitude] = useState<number | null>(step1.longitude);
+  const [googleMapLink, setGoogleMapLink] = useState<string>(step1.googleMapLink);
+
   // 3. Initialize Form with Default Values from Context
   // This ensures data persists when clicking "Back" from Step 2
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<OnboardingData>({
@@ -46,11 +53,27 @@ const Onbording1 = () => {
       phone: step1.phone,
       contactInfo: step1.contactInfo,
       address: step1.address,
+      googleMapLink: step1.googleMapLink,
     }
   });
 
-  // Watch phone for the controlled input
+  // Watch phone & address for controlled inputs
+  // eslint-disable-next-line react-hooks/incompatible-library
   const phoneValue = watch('phone');
+  const addressValue = watch('address');
+  const googleMapLinkValue = watch('googleMapLink');
+
+  // Handle address selection from Google Places autocomplete
+  const handleAddressChange = (address: string, lat?: number, lng?: number) => {
+    setValue('address', address, { shouldValidate: address.length >= 5 });
+    if (lat !== undefined && lng !== undefined) {
+      setLatitude(lat);
+      setLongitude(lng);
+      const generatedLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+      setGoogleMapLink(generatedLink);
+      setValue('googleMapLink', generatedLink);
+    }
+  };
 
   // Handle phone input
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,6 +113,9 @@ const Onbording1 = () => {
       phone: data.phone,
       contactInfo: data.contactInfo,
       address: data.address,
+      latitude,
+      longitude,
+      googleMapLink: data.googleMapLink ?? googleMapLink,
       coverImage: coverImage // Saving the file object
     });
 
@@ -147,15 +173,40 @@ const Onbording1 = () => {
                     {errors.contactInfo && <span className="text-red-500 text-sm">{errors.contactInfo.message}</span>}
                 </div>
 
-                {/* Address */}
+                {/* Address with Google Places Autocomplete */}
                 <div className="flex flex-col gap-2">
                     <label className="font-medium text-gray-700">Address</label>
-                    <input 
-                        type="text" 
-                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                        {...register("address")}
+                    <AddressAutocomplete
+                        value={addressValue}
+                        onChange={handleAddressChange}
+                        placeholder="Search for your restaurant address..."
+                        hasError={!!errors.address}
                     />
                     {errors.address && <span className="text-red-500 text-sm">{errors.address.message}</span>}
+                    {latitude && longitude && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Lat: {latitude.toFixed(6)}, Lng: {longitude.toFixed(6)}
+                      </p>
+                    )}
+                </div>
+
+                {/* Google Map Link */}
+                <div className="flex flex-col gap-2">
+                    <label className="font-medium text-gray-700">Google Map Link</label>
+                    <input
+                        type="url"
+                        placeholder="https://maps.google.com/..."
+                        className={`w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400 ${
+                          errors.googleMapLink ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        value={googleMapLinkValue ?? ''}
+                        {...register('googleMapLink')}
+                        onChange={(e) => {
+                          setGoogleMapLink(e.target.value);
+                          setValue('googleMapLink', e.target.value, { shouldValidate: true });
+                        }}
+                    />
+                    {errors.googleMapLink && <span className="text-red-500 text-sm">{errors.googleMapLink.message}</span>}
                 </div>
 
             </div>
