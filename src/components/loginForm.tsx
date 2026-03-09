@@ -31,18 +31,22 @@ export default function Login() {
         return;
       }
 
-      // 3. Compare role — only restaurant_owner is allowed
+      // 3. Compare role — only restaurant_owner and super_admin are allowed
       const data = userDoc.data();
       const role = data?.role;
 
-      if (role !== "restaurant_owner") {
+      if (role !== "restaurant_owner" && role !== "super_admin") {
         await auth.signOut();
-        setError("Access denied. Only restaurant owners can log in.");
+        setError("Access denied. Only restaurant owners and admins can log in.");
         return;
       }
 
-      // 4. Role is restaurant_owner → allow access
-      navigate("/");
+      // 4. Role is allowed → redirect based on role
+      if (role === "super_admin") {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
     } catch {
       setError("Invalid email or password. Please try again.");
     } finally {

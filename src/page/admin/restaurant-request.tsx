@@ -1,36 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, ChevronLeft, ChevronRight, Check, X, Eye, MapPin, Clock, Phone, Mail, User, Utensils, FileText } from "lucide-react";
+import type { RestaurantRequest } from "../../types/restaurantRequest";
+import {
+  getRequestsByStatus,
+  approveRestaurantRequest,
+  rejectRestaurantRequest,
+} from "../../features/restaurantRequest/restaurantRequestService";
 
-interface RestaurantRequest {
-  id: number;
-  name: string;
-  owner: string;
-  email: string;
-  phone: string;
-  address: string;
-  cuisineType: string;
-  description: string;
-  openingHours: string;
-  seatingCapacity: number;
-  requestDate: string;
-  documents: string[];
+// Extended display interface for UI
+interface DisplayRequest extends RestaurantRequest {
+  requestDate?: string;
+  openingHours?: string;
 }
-
-const mockRequests: RestaurantRequest[] = [
-  { id: 10001, name: "Omakase", owner: "Jack Smith", email: "Omakase@gmail.com", phone: "0118822342", address: "123 Riverside Blvd, Phnom Penh", cuisineType: "Japanese", description: "Authentic Japanese omakase experience with fresh ingredients imported daily from Tokyo's Tsukiji market.", openingHours: "11:00 AM - 10:00 PM", seatingCapacity: 40, requestDate: "2026-02-20", documents: ["Business License", "Health Certificate", "Food Safety Permit"] },
-  { id: 10002, name: "Uncle Hai", owner: "Hai Nguyen", email: "Unclehai@gmail.com", phone: "0118844322", address: "456 Street 271, Toul Kork", cuisineType: "Vietnamese", description: "Traditional Vietnamese pho and rice dishes made with family recipes passed down through generations.", openingHours: "6:00 AM - 9:00 PM", seatingCapacity: 60, requestDate: "2026-02-19", documents: ["Business License", "Health Certificate"] },
-  { id: 10003, name: "XiaoGe", owner: "Wei Chen", email: "Xiaoge@gmail.com", phone: "0908652390", address: "789 Mao Tse Tung Blvd", cuisineType: "Chinese", description: "Szechuan and Cantonese cuisine featuring spicy hot pot and dim sum.", openingHours: "10:00 AM - 11:00 PM", seatingCapacity: 80, requestDate: "2026-02-18", documents: ["Business License", "Health Certificate", "Fire Safety Certificate"] },
-  { id: 10004, name: "Burger King", owner: "Mike Johnson", email: "burgerking@gmail.com", phone: "012003344", address: "101 Norodom Blvd", cuisineType: "American Fast Food", description: "Premium burgers and fries with a focus on quality ingredients and fast service.", openingHours: "7:00 AM - 12:00 AM", seatingCapacity: 100, requestDate: "2026-02-17", documents: ["Franchise License", "Business License", "Health Certificate"] },
-  { id: 10005, name: "Pasta Corner", owner: "Marco Rossi", email: "pastacorner@gmail.com", phone: "012009944", address: "202 Russian Blvd", cuisineType: "Italian", description: "Handmade pasta and authentic Italian pizzas baked in a wood-fired oven.", openingHours: "11:00 AM - 10:00 PM", seatingCapacity: 50, requestDate: "2026-02-16", documents: ["Business License", "Health Certificate"] },
-  { id: 10006, name: "Kuyteav Tep", owner: "Sophal Keo", email: "kuyteavtep@gmail.com", phone: "098667743", address: "303 Street 63, BKK1", cuisineType: "Cambodian", description: "Famous Phnom Penh noodle soup with premium beef and fresh herbs.", openingHours: "5:30 AM - 2:00 PM", seatingCapacity: 35, requestDate: "2026-02-15", documents: ["Business License", "Health Certificate"] },
-  { id: 10007, name: "Sakura Buffet", owner: "Yuki Tanaka", email: "sakura@gmail.com", phone: "088506790", address: "404 Sihanouk Blvd", cuisineType: "Japanese Buffet", description: "All-you-can-eat Japanese buffet featuring sushi, sashimi, and teppanyaki.", openingHours: "11:30 AM - 2:30 PM, 5:30 PM - 10:00 PM", seatingCapacity: 150, requestDate: "2026-02-14", documents: ["Business License", "Health Certificate", "Food Handler Certification"] },
-  { id: 10008, name: "Romdoul", owner: "Dara Sok", email: "romdoul@gmail.com", phone: "088234433", address: "505 Kampuchea Krom Blvd", cuisineType: "Khmer Fine Dining", description: "Upscale Khmer cuisine with modern presentation, celebrating Cambodia's culinary heritage.", openingHours: "6:00 PM - 11:00 PM", seatingCapacity: 45, requestDate: "2026-02-13", documents: ["Business License", "Health Certificate", "Liquor License"] },
-  { id: 10009, name: "Khmer River", owner: "Visal Tep", email: "khmerriver@gmail.com", phone: "097090988", address: "606 Sisowath Quay", cuisineType: "Cambodian Seafood", description: "Fresh river and ocean seafood served with stunning views of the Mekong.", openingHours: "10:00 AM - 11:00 PM", seatingCapacity: 120, requestDate: "2026-02-12", documents: ["Business License", "Health Certificate", "Liquor License"] },
-  { id: 10010, name: "Pasta Master", owner: "Luigi Bianchi", email: "pastamaster@gmail.com", phone: "097880099", address: "707 Street 240", cuisineType: "Italian", description: "Gourmet Italian dining with an extensive wine selection and homemade desserts.", openingHours: "12:00 PM - 10:30 PM", seatingCapacity: 65, requestDate: "2026-02-11", documents: ["Business License", "Health Certificate", "Liquor License"] },
-  { id: 10011, name: "Carl Jr", owner: "David Lee", email: "carljr@gmail.com", phone: "077723090", address: "808 Monivong Blvd", cuisineType: "American Fast Food", description: "Charbroiled burgers and hand-breaded chicken tenders.", openingHours: "6:00 AM - 11:00 PM", seatingCapacity: 75, requestDate: "2026-02-10", documents: ["Franchise License", "Business License", "Health Certificate"] },
-  { id: 10012, name: "Sushi World", owner: "Kenji Yamamoto", email: "sushiworld@gmail.com", phone: "088112233", address: "909 Street 51", cuisineType: "Japanese Sushi", description: "Premium sushi and sashimi prepared by expert chefs with years of experience.", openingHours: "11:00 AM - 10:00 PM", seatingCapacity: 55, requestDate: "2026-02-09", documents: ["Business License", "Health Certificate", "Food Safety Permit"] },
-  { id: 10013, name: "Noodle King", owner: "Chen Wei", email: "noodleking@gmail.com", phone: "099223344", address: "1010 Street 310", cuisineType: "Chinese Noodles", description: "Hand-pulled noodles and traditional Chinese noodle soups.", openingHours: "7:00 AM - 9:00 PM", seatingCapacity: 45, requestDate: "2026-02-08", documents: ["Business License", "Health Certificate"] },
-];
 
 const PAGE_SIZE = 11;
 
@@ -38,10 +19,34 @@ export default function AdminRestaurantRequests() {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("Newest");
-  const [selectedRequest, setSelectedRequest] = useState<RestaurantRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<DisplayRequest | null>(
+    null
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [requests, setRequests] = useState<DisplayRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const openModal = (request: RestaurantRequest) => {
+  // Fetch pending requests from Firestore
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const pendingRequests = await getRequestsByStatus("pending");
+        setRequests(pendingRequests as DisplayRequest[]);
+      } catch (err) {
+        console.error("Error fetching requests:", err);
+        setError("Failed to fetch restaurant requests");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRequests();
+  }, []);
+
+  const openModal = (request: DisplayRequest) => {
     setSelectedRequest(request);
     setIsModalOpen(true);
   };
@@ -51,21 +56,23 @@ export default function AdminRestaurantRequests() {
     setIsModalOpen(false);
   };
 
-  // Filter
-  const filtered = mockRequests.filter(
+  // Filter requests
+  const filtered = requests.filter(
     (r) =>
-      r.name.toLowerCase().includes(search.toLowerCase()) ||
-      r.owner.toLowerCase().includes(search.toLowerCase()) ||
-      r.email.toLowerCase().includes(search.toLowerCase()) ||
-      r.phone.includes(search) ||
-      String(r.id).includes(search)
+      r.restaurantName.toLowerCase().includes(search.toLowerCase()) ||
+      r.ownerId.toLowerCase().includes(search.toLowerCase()) ||
+      r.email?.toLowerCase().includes(search.toLowerCase()) ||
+      r.phone?.includes(search) ||
+      r.id?.includes(search)
   );
 
-  // Sort
+  // Sort requests
   const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === "Newest") return b.id - a.id;
-    if (sortBy === "Oldest") return a.id - b.id;
-    return a.name.localeCompare(b.name);
+    if (sortBy === "Newest")
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    if (sortBy === "Oldest")
+      return (a.createdAt || 0) - (b.createdAt || 0);
+    return a.restaurantName.localeCompare(b.restaurantName);
   });
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
@@ -74,14 +81,35 @@ export default function AdminRestaurantRequests() {
     currentPage * PAGE_SIZE
   );
 
-  const handleAccept = (request: RestaurantRequest) => {
-    alert(`Accepted request from ${request.name}`);
-    closeModal();
+  const handleAccept = async (request: DisplayRequest) => {
+    try {
+      if (request.id) {
+        await approveRestaurantRequest(request.id);
+        alert(`Approved request from ${request.restaurantName}`);
+        setRequests(requests.filter((r) => r.id !== request.id));
+        closeModal();
+      }
+    } catch (err) {
+      console.error("Error approving request:", err);
+      alert("Failed to approve request");
+    }
   };
 
-  const handleReject = (request: RestaurantRequest) => {
-    alert(`Rejected request from ${request.name}`);
-    closeModal();
+  const handleReject = async (request: DisplayRequest) => {
+    const reason = prompt("Enter rejection reason:");
+    if (reason) {
+      try {
+        if (request.id) {
+          await rejectRestaurantRequest(request.id, reason);
+          alert(`Rejected request from ${request.restaurantName}`);
+          setRequests(requests.filter((r) => r.id !== request.id));
+          closeModal();
+        }
+      } catch (err) {
+        console.error("Error rejecting request:", err);
+        alert("Failed to reject request");
+      }
+    }
   };
 
   // Build page numbers
@@ -111,6 +139,27 @@ export default function AdminRestaurantRequests() {
       <h1 className="text-3xl font-bold text-gray-900 mb-6">
         Restaurant Request
       </h1>
+
+      {/* Error State */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500">Loading requests...</div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && filtered.length === 0 && !error && (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500">No pending restaurant requests</div>
+        </div>
+      )}
 
       {/* Search & Sort Row */}
       <div className="flex items-center justify-between mb-6">
@@ -163,16 +212,16 @@ export default function AdminRestaurantRequests() {
           <tbody>
             {paginated.map((request, index) => (
               <tr
-                key={`${request.name}-${index}`}
+                key={`${request.restaurantName}-${index}`}
                 className={`border-b border-gray-100 ${
                   index % 2 === 0 ? "bg-white" : "bg-gray-50"
                 } hover:bg-amber-50 transition-colors`}
               >
-                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.id}</td>
-                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.name}</td>
-                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.owner}</td>
-                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.email}</td>
-                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.phone}</td>
+                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.id || "-"}</td>
+                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.restaurantName}</td>
+                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.ownerId}</td>
+                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.email || "-"}</td>
+                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.phone || "-"}</td>
                 <td className="py-2.5 px-4 text-center">
                   <button
                     onClick={() => openModal(request)}
@@ -253,47 +302,53 @@ export default function AdminRestaurantRequests() {
                 <div className="col-span-2">
                   <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                     <Utensils size={20} className="text-amber-500" />
-                    {selectedRequest.name}
+                    {selectedRequest.restaurantName}
                   </h3>
-                  <span className="inline-block mt-1 px-3 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
-                    {selectedRequest.cuisineType}
-                  </span>
+                  {selectedRequest.cuisineType && (
+                    <span className="inline-block mt-1 px-3 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                      {selectedRequest.cuisineType}
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
-                    <User size={14} /> Owner Name
+                    <User size={14} /> Owner ID
                   </label>
-                  <p className="text-sm text-gray-900 font-medium">{selectedRequest.owner}</p>
+                  <p className="text-sm text-gray-900 font-medium">{selectedRequest.ownerId}</p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-500">Restaurant ID</label>
-                  <p className="text-sm text-gray-900 font-medium">#{selectedRequest.id}</p>
+                  <label className="text-xs font-medium text-gray-500">Request ID</label>
+                  <p className="text-sm text-gray-900 font-medium">#{selectedRequest.id || "-"}</p>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
-                    <Mail size={14} /> Email
-                  </label>
-                  <p className="text-sm text-gray-900">{selectedRequest.email}</p>
-                </div>
+                {selectedRequest.email && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                      <Mail size={14} /> Email
+                    </label>
+                    <p className="text-sm text-gray-900">{selectedRequest.email}</p>
+                  </div>
+                )}
 
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
-                    <Phone size={14} /> Phone Number
-                  </label>
-                  <p className="text-sm text-gray-900">{selectedRequest.phone}</p>
-                </div>
+                {selectedRequest.phone && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                      <Phone size={14} /> Phone Number
+                    </label>
+                    <p className="text-sm text-gray-900">{selectedRequest.phone}</p>
+                  </div>
+                )}
               </div>
 
-              {/* Address Section */}
+              {/* Address/Location Section */}
               <div className="border-t pt-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
-                    <MapPin size={14} /> Address
+                    <MapPin size={14} /> Location
                   </label>
-                  <p className="text-sm text-gray-900">{selectedRequest.address}</p>
+                  <p className="text-sm text-gray-900">{selectedRequest.location}</p>
                 </div>
               </div>
 
@@ -308,40 +363,56 @@ export default function AdminRestaurantRequests() {
               </div>
 
               {/* Additional Details */}
-              <div className="border-t pt-4 grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
-                    <Clock size={14} /> Opening Hours
-                  </label>
-                  <p className="text-sm text-gray-900">{selectedRequest.openingHours}</p>
-                </div>
+              {(selectedRequest.openingHours || selectedRequest.seatingCapacity) && (
+                <div className="border-t pt-4 grid grid-cols-2 gap-4">
+                  {selectedRequest.openingHours && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                        <Clock size={14} /> Opening Hours
+                      </label>
+                      <p className="text-sm text-gray-900">{selectedRequest.openingHours}</p>
+                    </div>
+                  )}
 
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-500">Seating Capacity</label>
-                  <p className="text-sm text-gray-900">{selectedRequest.seatingCapacity} seats</p>
-                </div>
+                  {selectedRequest.seatingCapacity && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-gray-500">Seating Capacity</label>
+                      <p className="text-sm text-gray-900">{selectedRequest.seatingCapacity} seats</p>
+                    </div>
+                  )}
 
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-500">Request Date</label>
-                  <p className="text-sm text-gray-900">{new Date(selectedRequest.requestDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-500">Request Date</label>
+                    <p className="text-sm text-gray-900">
+                      {selectedRequest.createdAt
+                        ? new Date(selectedRequest.createdAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })
+                        : "-"}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Documents Section */}
-              <div className="border-t pt-4">
-                <label className="text-xs font-medium text-gray-500 mb-2 block">Submitted Documents</label>
-                <div className="flex flex-wrap gap-2">
-                  {selectedRequest.documents.map((doc, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded-lg flex items-center gap-1"
-                    >
-                      <FileText size={12} />
-                      {doc}
-                    </span>
-                  ))}
+              {selectedRequest.documents && selectedRequest.documents.length > 0 && (
+                <div className="border-t pt-4">
+                  <label className="text-xs font-medium text-gray-500 mb-2 block">Submitted Documents</label>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedRequest.documents.map((doc, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded-lg flex items-center gap-1"
+                      >
+                        <FileText size={12} />
+                        {doc}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Modal Footer - Action Buttons */}

@@ -1,50 +1,94 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../config/firebase";
 
-const mockUsers = [
-  { id: 10001, firstName: "Chanrat", email: "Chanrat@gmail.com" },
-  { id: 10002, firstName: "Jonhson", email: "Jonhson@gmail.com" },
-  { id: 10003, firstName: "Thyrak", email: "Thyrak@gmail.com" },
-  { id: 10004, firstName: "Panha", email: "Panha@gmail.com" },
-  { id: 10005, firstName: "Youdy", email: "Youdy@gmail.com" },
-  { id: 10006, firstName: "Chhenghab", email: "Chhenghab@gmail.com" },
-  { id: 10007, firstName: "Navid", email: "Navid@gmail.com" },
-  { id: 10008, firstName: "Jonathan", email: "Jonathan@gmail.com" },
-  { id: 10009, firstName: "Alexa", email: "Alexa@gmail.com" },
-  { id: 10010, firstName: "Sok", email: "Sok@gmail.com" },
-  { id: 10011, firstName: "Sovan", email: "Sovan@gmail.com" },
-  { id: 10012, firstName: "Dara", email: "Dara@gmail.com" },
-  { id: 10013, firstName: "Mony", email: "Mony@gmail.com" },
-  { id: 10014, firstName: "Visal", email: "Visal@gmail.com" },
-  { id: 10015, firstName: "Pisey", email: "Pisey@gmail.com" },
-  { id: 10016, firstName: "Rith", email: "Rith@gmail.com" },
-  { id: 10017, firstName: "Srey", email: "Srey@gmail.com" },
-  { id: 10018, firstName: "Nary", email: "Nary@gmail.com" },
-  { id: 10019, firstName: "Kanha", email: "Kanha@gmail.com" },
-  { id: 10020, firstName: "Bopha", email: "Bopha@gmail.com" },
-  { id: 10021, firstName: "Kosal", email: "Kosal@gmail.com" },
-  { id: 10022, firstName: "Leap", email: "Leap@gmail.com" },
-];
+interface AdminUser {
+  id: string;
+  firstName: string;
+  email: string;
+  role: string;
+  createdAt?: number;
+}
 
 const PAGE_SIZE = 11;
 
 export default function AdminUsers() {
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("Newest");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const querySnapshot = await getDocs(collection(db, "users"));
+        const fetchedUsers: AdminUser[] = querySnapshot.docs.map((docSnap) => {
+          const data = docSnap.data() as {
+            displayName?: string;
+            firstName?: string;
+            name?: string;
+            username?: string;
+            email?: string;
+            role?: string;
+            createdAt?: { toMillis?: () => number } | string | number;
+          };
+
+          const resolvedCreatedAt =
+            typeof data.createdAt === "number"
+              ? data.createdAt
+              : typeof data.createdAt === "string"
+                ? Date.parse(data.createdAt)
+                : data.createdAt?.toMillis?.();
+
+          return {
+            id: docSnap.id,
+            firstName:
+              data.displayName ||
+              data.firstName ||
+              data.name ||
+              data.username ||
+              data.email?.split("@")[0] ||
+              "Unknown",
+            email: data.email || "-",
+            role: data.role || "unknown",
+            createdAt: Number.isNaN(resolvedCreatedAt) ? 0 : resolvedCreatedAt,
+          };
+        });
+
+        setUsers(fetchedUsers);
+      } catch (err) {
+        console.error("Failed to fetch users:", err);
+        const firebaseError = err as { code?: string; message?: string };
+        setError(
+          `Failed to load users${firebaseError.code ? ` (${firebaseError.code})` : ""}: ${firebaseError.message ?? "Unknown error"}`
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   // Filter
-  const filtered = mockUsers.filter(
+  const filtered = users.filter(
     (u) =>
       u.firstName.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase()) ||
-      String(u.id).includes(search)
+      u.id.toLowerCase().includes(search.toLowerCase()) ||
+      u.role.toLowerCase().includes(search.toLowerCase())
   );
 
   // Sort
   const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === "Newest") return b.id - a.id;
-    if (sortBy === "Oldest") return a.id - b.id;
+    if (sortBy === "Newest") return (b.createdAt || 0) - (a.createdAt || 0);
+    if (sortBy === "Oldest") return (a.createdAt || 0) - (b.createdAt || 0);
     return a.firstName.localeCompare(b.firstName);
   });
 
@@ -54,7 +98,7 @@ export default function AdminUsers() {
     currentPage * PAGE_SIZE
   );
 
-  const handleRemove = (id: number) => {
+  const handleRemove = (id: string) => {
     alert(`Remove user ${id}`);
   };
 
@@ -85,6 +129,18 @@ export default function AdminUsers() {
       <h1 className="text-3xl font-bold text-gray-900 mb-6">
         User Management
       </h1>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm">
+          {error}
+        </div>
+      )}
+
+      {loading && (
+        <div className="mb-4 p-3 bg-gray-100 text-gray-600 rounded text-sm">
+          Loading users...
+        </div>
+      )}
 
       {/* Search & Sort Row */}
       <div className="flex items-center justify-between mb-6">
@@ -129,6 +185,7 @@ export default function AdminUsers() {
               <th className="py-3 px-6 text-left font-semibold">User ID</th>
               <th className="py-3 px-6 text-left font-semibold">First Name</th>
               <th className="py-3 px-6 text-left font-semibold">Email</th>
+              <th className="py-3 px-6 text-left font-semibold">Role</th>
               <th className="py-3 px-6 text-center font-semibold">Action</th>
             </tr>
           </thead>
@@ -143,6 +200,7 @@ export default function AdminUsers() {
                 <td className="py-3 px-6 text-gray-700">{user.id}</td>
                 <td className="py-3 px-6 text-gray-700">{user.firstName}</td>
                 <td className="py-3 px-6 text-gray-700">{user.email}</td>
+                <td className="py-3 px-6 text-gray-700 capitalize">{user.role.replaceAll("_", " ")}</td>
                 <td className="py-3 px-6 text-center">
                   <button
                     onClick={() => handleRemove(user.id)}
