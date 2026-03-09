@@ -1,69 +1,6 @@
-import { useState } from "react";
-import { Search, SlidersHorizontal, Star, User } from "lucide-react";
-
-interface Feedback {
-  id: number;
-  name: string;
-  views: string;
-  comment: string;
-  rating: number;
-  timeAgo: string;
-}
-
-const feedbackData: Feedback[] = [
-  {
-    id: 1,
-    name: "Prak lavymanavid",
-    views: "188 views",
-    comment:
-      "Nice place to pick up Tube Coffee — same consistent taste you'd expect anywhere else.",
-    rating: 3,
-    timeAgo: "a month ago",
-  },
-  {
-    id: 2,
-    name: "Chanrat",
-    views: "10m views",
-    comment: "Amazon !!!",
-    rating: 5,
-    timeAgo: "2 months ago",
-  },
-  {
-    id: 3,
-    name: "Thyrak",
-    views: "368 views",
-    comment:
-      "Great cafe, I love the taste. The place to sit is a bit small for long sit or work might be noisy.",
-    rating: 4,
-    timeAgo: "a few weeks ago",
-  },
-  {
-    id: 4,
-    name: "Chheng hab smos",
-    views: "1k views",
-    comment: "Best Coffee in town!\nFast, Affordable and Convenient.",
-    rating: 4,
-    timeAgo: "a day ago",
-  },
-  {
-    id: 5,
-    name: "Panha on the mix",
-    views: "268 views",
-    comment:
-      "Very good place to study. But the table is abit to small only good for 1 person each.",
-    rating: 4,
-    timeAgo: "two days ago",
-  },
-  {
-    id: 6,
-    name: "Youdy",
-    views: "302 views",
-    comment:
-      "Good covid safety measures are in place. Good air conditioning, and plenty of space. I had the carrot juice with Apple and it was very sweet and refreshing.",
-    rating: 5,
-    timeAgo: "a second ago",
-  },
-];
+import { useState, useEffect } from "react";
+import { Search, SlidersHorizontal, Star, User, Loader2 } from "lucide-react";
+import { fetchReviews, type Review } from "../features/reviews/reviewService";
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -84,18 +21,49 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return "just now";
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 604800)} weeks ago`;
+  return `${Math.floor(diffInSeconds / 2592000)} months ago`;
+}
+
 type SortOption = "newest" | "oldest" | "highest" | "lowest";
 
 export default function FeedbackMonitor() {
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [showSortMenu, setShowSortMenu] = useState(false);
 
-  const filtered = feedbackData
+  // Fetch reviews on mount
+  useEffect(() => {
+    loadReviews();
+  }, []);
+
+  const loadReviews = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchReviews();
+      setReviews(data);
+    } catch (error) {
+      console.error("Failed to fetch reviews:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = reviews
     .filter(
       (f) =>
-        f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        f.user_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         f.comment.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
@@ -105,18 +73,26 @@ export default function FeedbackMonitor() {
         case "lowest":
           return a.rating - b.rating;
         case "oldest":
-          return a.id - b.id;
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         case "newest":
         default:
-          return b.id - a.id;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
     });
+
+  // Calculate stats
+  const avgRating = reviews.length > 0 
+    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    : "0.0";
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div className="text-3xl font-bold text-gray-900">Feedback Monitor</div>
+        <div className="flex items-center gap-4">
+          <div className="text-3xl font-bold text-gray-900">Feedback Monitor</div>
+          {loading && <Loader2 size={24} className="text-amber-400 animate-spin" />}
+        </div>
 
         <div className="flex items-center gap-3">
           {/* Search */}
@@ -183,51 +159,82 @@ export default function FeedbackMonitor() {
         </div>
       </div>
 
-      {/* Feedback List */}
-      <div className="space-y-4">
-        {filtered.map((feedback) => (
-          <div
-            key={feedback.id}
-            className="bg-white border border-gray-200 rounded-2xl px-6 py-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow"
-          >
-            {/* Avatar */}
-            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mt-1">
-              <User size={24} className="text-gray-500" />
-            </div>
+      {/* Stats Summary */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="text-sm text-gray-500 mb-1">Total Reviews</div>
+          <div className="text-2xl font-bold text-gray-900">{reviews.length}</div>
+        </div>
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="text-sm text-gray-500 mb-1">Average Rating</div>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-gray-900">{avgRating}</span>
+            <Star size={20} className="fill-amber-400 text-amber-400" />
+          </div>
+        </div>
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="text-sm text-gray-500 mb-1">5-Star Reviews</div>
+          <div className="text-2xl font-bold text-green-600">
+            {reviews.filter((r) => r.rating === 5).length}
+          </div>
+        </div>
+      </div>
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-1">
-                <span className="font-semibold text-gray-900 text-base">
-                  {feedback.name}
-                </span>
-                <span className="text-xs font-medium text-orange-500">
-                  {feedback.views}
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 size={48} className="text-amber-400 animate-spin" />
+        </div>
+      )}
+
+      {/* Feedback List */}
+      {!loading && (
+        <div className="space-y-4">
+          {filtered.map((review) => (
+            <div
+              key={review.id}
+              className="bg-white border border-gray-200 rounded-2xl px-6 py-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow"
+            >
+              {/* Avatar */}
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mt-1">
+                <User size={24} className="text-gray-500" />
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="font-semibold text-gray-900 text-base">
+                    {review.user_name}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                  {review.comment}
+                </p>
+              </div>
+
+              {/* Rating & Time */}
+              <div className="flex-shrink-0 flex flex-col items-end gap-1 ml-4">
+                <StarRating rating={review.rating} />
+                <span className="text-xs text-gray-500 mt-1">
+                  {formatTimeAgo(new Date(review.createdAt))}
                 </span>
               </div>
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-                {feedback.comment}
+            </div>
+          ))}
+
+          {filtered.length === 0 && !loading && (
+            <div className="text-center py-16 text-gray-400">
+              <Search size={48} className="mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No feedback found</p>
+              <p className="text-sm mt-1">
+                {reviews.length === 0 
+                  ? "Click 'Seed Reviews' to add sample data"
+                  : "Try a different search term"}
               </p>
             </div>
-
-            {/* Rating & Time */}
-            <div className="flex-shrink-0 flex flex-col items-end gap-1 ml-4">
-              <StarRating rating={feedback.rating} />
-              <span className="text-xs text-gray-500 mt-1">
-                {feedback.timeAgo}
-              </span>
-            </div>
-          </div>
-        ))}
-
-        {filtered.length === 0 && (
-          <div className="text-center py-16 text-gray-400">
-            <Search size={48} className="mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium">No feedback found</p>
-            <p className="text-sm mt-1">Try a different search term</p>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -8,6 +8,9 @@ export interface Step1Data {
   phone: string;
   contactInfo: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
+  googleMapLink: string;
   coverImage: File | null;
 }
 
@@ -43,6 +46,9 @@ const defaultStep1: Step1Data = {
   phone: "",
   contactInfo: "",
   address: "",
+  latitude: null,
+  longitude: null,
+  googleMapLink: "",
   coverImage: null,
 };
 
