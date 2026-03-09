@@ -3,12 +3,12 @@ import './App.css'
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 
 import { AuthProvider, useAuth } from './features/auth/AuthContext'
+import { MenuProvider } from './features/menu/MenuContext'
 
 import Dashboard from './page/dashboard'
 import RestaurantProfile from './page/RestaurantProfile'
-import MenuPromotion from './page/MenuPromotion'
+import MenuPromotion from './page/MenuPromotionNew'
 import FeedbackMonitor from './page/FeedbackMonitor'
-import Reservation from './page/Reservation'
 import Sidebar from './components/Sidebar'
 import Login from './page/Login'
 import SignUp from './page/SignUp'
@@ -63,7 +63,6 @@ function AppLayout() {
             <Route path="/profile" element={<RestaurantProfile />} />
             <Route path="/menus" element={<MenuPromotion />} />
             <Route path="/feedback" element={<FeedbackMonitor />} />
-            <Route path="/reservation" element={<Reservation />} />
             <Route path="/setting" element={<Setting />} />
           </Routes>
         </div>
@@ -75,22 +74,24 @@ function AppLayout() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          {/* Onboarding Routes — single provider keeps data alive across steps */}
-          <Route element={<OnboardingProvider><Outlet /></OnboardingProvider>}>
-            <Route path="/onbording1" element={<OnboardingGuard><Onbording1 /></OnboardingGuard>} />
-            <Route path="/onbording2" element={<OnboardingGuard><Onbording2 /></OnboardingGuard>} />
-            <Route path="/onbording3" element={<OnboardingGuard><Onbording3 /></OnboardingGuard>} />
-          </Route>
-          
-          {/* Protected Routes Wrapper */}
-          <Route path="/*" element={<AppLayout />} />
-        </Routes>
-      </BrowserRouter>
+      <MenuProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
+            {/* Onboarding Routes — single provider keeps data alive across steps */}
+            <Route element={<OnboardingProvider><Outlet /></OnboardingProvider>}>
+              <Route path="/onbording1" element={<OnboardingGuard><Onbording1 /></OnboardingGuard>} />
+              <Route path="/onbording2" element={<OnboardingGuard><Onbording2 /></OnboardingGuard>} />
+              <Route path="/onbording3" element={<OnboardingGuard><Onbording3 /></OnboardingGuard>} />
+            </Route>
+            
+            {/* Protected Routes Wrapper */}
+            <Route path="/*" element={<AppLayout />} />
+          </Routes>
+        </BrowserRouter>
+      </MenuProvider>
     </AuthProvider>
   )
 }

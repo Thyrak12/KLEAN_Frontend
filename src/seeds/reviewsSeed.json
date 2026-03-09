@@ -1,0 +1,112 @@
+{
+  "reviews": [
+    {
+      "id": "review_001",
+      "restaurant_id": "rest_001",
+      "user_id": "user_001",
+      "user_name": "John Smith",
+      "rating": 5,
+      "comment": "Absolutely amazing food! The pad thai was the best I've ever had. Service was excellent and the ambiance was perfect for a date night. Will definitely come back!",
+      "createdAt": "2026-03-01T18:30:00Z"
+    },
+    {
+      "id": "review_002",
+      "restaurant_id": "rest_001",
+      "user_id": "user_002",
+      "user_name": "Sarah Johnson",
+      "rating": 4,
+      "comment": "Great food and friendly staff. The only reason I'm not giving 5 stars is because the wait time was a bit long. But the quality made up for it!",
+      "createdAt": "2026-03-02T12:15:00Z"
+    },
+    {
+      "id": "review_003",
+      "restaurant_id": "rest_001",
+      "user_id": "user_003",
+      "user_name": "Michael Chen",
+      "rating": 5,
+      "comment": "Best sushi in town! Fresh ingredients and beautiful presentation. The chef's special was outstanding.",
+      "createdAt": "2026-03-03T19:45:00Z"
+    },
+    {
+      "id": "review_004",
+      "restaurant_id": "rest_001",
+      "user_id": "user_004",
+      "user_name": "Emily Davis",
+      "rating": 3,
+      "comment": "Food was decent but nothing special. Expected more based on the reviews. Portion sizes could be bigger for the price.",
+      "createdAt": "2026-03-04T13:00:00Z"
+    },
+    {
+      "id": "review_005",
+      "restaurant_id": "rest_001",
+      "user_id": "user_005",
+      "user_name": "David Wilson",
+      "rating": 5,
+      "comment": "Incredible experience from start to finish. The noodle soup was perfectly seasoned and the spring rolls were crispy and delicious!",
+      "createdAt": "2026-03-05T20:30:00Z"
+    },
+    {
+      "id": "review_006",
+      "restaurant_id": "rest_001",
+      "user_id": "user_006",
+      "user_name": "Lisa Anderson",
+      "rating": 4,
+      "comment": "Lovely restaurant with a cozy atmosphere. The grilled chicken was juicy and flavorful. Would recommend for family dinners.",
+      "createdAt": "2026-03-05T14:20:00Z"
+    },
+    {
+      "id": "review_007",
+      "restaurant_id": "rest_001",
+      "user_id": "user_007",
+      "user_name": "James Brown",
+      "rating": 2,
+      "comment": "Disappointed with my visit. The food arrived cold and the server seemed overwhelmed. Hope they improve their service.",
+      "createdAt": "2026-03-06T11:45:00Z"
+    },
+    {
+      "id": "review_008",
+      "restaurant_id": "rest_001",
+      "user_id": "user_008",
+      "user_name": "Amanda Taylor",
+      "rating": 5,
+      "comment": "Hidden gem! The seafood platter was phenomenal. Fresh, well-cooked, and beautifully plated. Staff was super attentive.",
+      "createdAt": "2026-03-06T19:00:00Z"
+    },
+    {
+      "id": "review_009",
+      "restaurant_id": "rest_001",
+      "user_id": "user_009",
+      "user_name": "Robert Martinez",
+      "rating": 4,
+      "comment": "Solid choice for Asian cuisine. The fried rice was excellent and the portions are generous. Fair prices too!",
+      "createdAt": "2026-03-07T12:30:00Z"
+    },
+    {
+      "id": "review_010",
+      "restaurant_id": "rest_001",
+      "user_id": "user_010",
+      "user_name": "Jennifer Lee",
+      "rating": 5,
+      "comment": "Perfect dinner spot! Everything we ordered was delicious. The dessert menu is also worth exploring. Highly recommend the mango sticky rice!",
+      "createdAt": "2026-03-07T21:15:00Z"
+    },
+    {
+      "id": "review_011",
+      "restaurant_id": "rest_001",
+      "user_id": "user_011",
+      "user_name": "Chris Thompson",
+      "rating": 3,
+      "comment": "Average experience. Food was okay but I've had better elsewhere. The location is convenient though.",
+      "createdAt": "2026-03-07T15:00:00Z"
+    },
+    {
+      "id": "review_012",
+      "restaurant_id": "rest_001",
+      "user_id": "user_012",
+      "user_name": "Michelle Garcia",
+      "rating": 5,
+      "comment": "Celebrated my birthday here and it was wonderful! The staff brought out a complimentary dessert. Such a thoughtful touch!",
+      "createdAt": "2026-03-06T20:45:00Z"
+    }
+  ]
+}
