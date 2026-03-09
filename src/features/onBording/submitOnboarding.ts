@@ -46,22 +46,27 @@ export async function submitOnboarding({
   const userData = {
     uid: user.uid,
     email: user.email,
-    role: "pending_owner", // Changed from "restaurant_owner"
+    role: "pending_owner",
     createdAt: new Date(),
     onboardingCompleted: true,
   };
 
-  const restaurantData = {
+  // Create restaurant request (pending approval) instead of restaurant
+  const restaurantRequestData = {
     uid: user.uid,
+    ownerId: user.uid,
+    email: user.email,
     restaurantName: step1.restaurantName,
     phone: step1.phone,
     contactInfo: step1.contactInfo,
     address: step1.address,
+    location: step1.address, // For compatibility with RestaurantRequest type
     latitude: step1.latitude,
     longitude: step1.longitude,
     googleMapLink: step1.googleMapLink,
     coverImageUrl,
     category: step2.category,
+    cuisineType: step2.category, // For compatibility
     ambience: step2.ambience,
     amenities: step2.amenities,
     pricing: {
@@ -77,6 +82,10 @@ export async function submitOnboarding({
     offersFixedSets: step3Values.offersFixedSets === "yes",
     avgSetPrice: step3Values.offersFixedSets === "yes" ? step3Values.avgSetPrice : null,
     dinerTypes: step3Values.dinerTypes,
+    // Request status fields
+    status: "pending" as const,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
   };
 
   // 3. Save user data
@@ -87,17 +96,17 @@ export async function submitOnboarding({
     throw new Error("Failed to save user data. Check Firestore rules for 'users' collection.");
   }
 
-  // 4. Save restaurant data
+  // 4. Save restaurant request (pending approval)
   try {
-    await setDoc(doc(db, "restaurants", user.uid), restaurantData, { merge: true });
+    await setDoc(doc(db, "restaurantRequests", user.uid), restaurantRequestData, { merge: true });
   } catch (err) {
-    console.error("Failed to write to 'restaurants' collection:", err);
-    throw new Error("Failed to save restaurant data. Check Firestore rules for 'restaurants' collection.");
+    console.error("Failed to write to 'restaurantRequests' collection:", err);
+    throw new Error("Failed to save restaurant request. Check Firestore rules for 'restaurantRequests' collection.");
   }
 
   console.log("User Data:", userData);
-  console.log("Restaurant Data:", restaurantData);
-  console.log("Onboarding submission completed successfully");
+  console.log("Restaurant Request Data:", restaurantRequestData);
+  console.log("Onboarding submission completed successfully - awaiting admin approval");
   
   // Refresh user data to ensure AuthContext has latest role info
   if (refreshUserData) {
