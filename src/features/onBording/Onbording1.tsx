@@ -24,7 +24,7 @@ const onboardingSchema = z.object({
     .refine(validateCambodianPhone, "Only 8-9 digits are allowed"),
   contactInfo: z.string().min(1, "Contact info is required"),
   address: z.string().min(5, "Address must be at least 5 characters"),
-  googleMapLink: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  googleMapLink: z.string().min(1, "Google Map link is required").url("Must be a valid URL"),
 });
 
 type OnboardingData = z.infer<typeof onboardingSchema>;
