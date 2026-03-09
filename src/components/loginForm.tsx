@@ -25,6 +25,22 @@ export default function Login() {
       // 2. Check if user doc exists in Firestore 'users' collection
       const userDoc = await getDoc(doc(db, "users", uid));
 
+      // 3. Compare role — only restaurant_owner and super_admin are allowed
+      const data = userDoc.data();
+      const role = data?.role;
+
+      if (role !== "restaurant_owner" && role !== "super_admin") {
+        await auth.signOut();
+        setError("Access denied. Only restaurant owners and admins can log in.");
+        return;
+      }
+
+      // 4. Role is allowed → redirect based on role
+      if (role === "super_admin") {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
       // If userDoc exists, verify they have an allowed role
       if (userDoc.exists()) {
         const data = userDoc.data();
