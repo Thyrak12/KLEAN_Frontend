@@ -7,7 +7,7 @@ import { MenuProvider } from './features/menu/MenuContext'
 
 import Dashboard from './page/dashboard'
 import RestaurantProfile from './page/RestaurantProfile'
-import MenuPromotion from './page/MenuPromotionNew'
+import MenuPromotion from './page/MenuPromotion'
 import FeedbackMonitor from './page/FeedbackMonitor'
 import Sidebar from './components/Sidebar'
 import Login from './page/Login'
