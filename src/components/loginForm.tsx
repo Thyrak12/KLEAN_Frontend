@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { auth, db } from "../config/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth/web-extension";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import logo from "../assets/logo.png"; // Adjust the path if needed
 
@@ -18,40 +18,32 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      // 1. Authenticate with Firebase
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
-
-      // 2. Check if user doc exists in Firestore 'users' collection
       const userDoc = await getDoc(doc(db, "users", uid));
 
       if (!userDoc.exists()) {
-        // No user doc = new user, redirect to onboarding
-        navigate("/onbording1");
+        await auth.signOut();
+        setError("Account profile not found. Please contact support.");
         return;
       }
 
-      // 3. Get user role
       const data = userDoc.data();
-      const role = data?.role;
-
-      // 4. Check allowed roles
+      const role = data?.role as string | undefined;
       const allowedRoles = ["restaurant_owner", "pending_owner", "admin", "super_admin"];
-      
+
       if (!role || !allowedRoles.includes(role)) {
         await auth.signOut();
         setError("Access denied. Invalid role for this platform.");
         return;
       }
 
-      // 5. Redirect based on role
       if (role === "super_admin") {
-        navigate("/dashboard/admin");
-      } else {
-        // restaurant_owner, pending_owner, admin all go to dashboard
-        // AppLayout will show PendingApproval for pending_owner
-        navigate("/dashboard");
+        navigate("/admin");
+        return;
       }
+
+      navigate("/");
     } catch {
       setError("Invalid email or password. Please try again.");
     } finally {

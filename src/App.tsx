@@ -26,7 +26,8 @@ import AdminRestaurantManage from "./page/admin/restaurant-manage";
 import AdminUsers from "./page/admin/users";
 import AdminRestaurantRequests from "./page/admin/restaurant-request";
 import AdminSettings from "./page/admin/setting";
-import PendingApproval from './page/PendingApproval';
+import { SeederPage } from "./page/admin/seeder";
+import PendingApproval from './page/PendingApproval' // Add new import at the top
 
 function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -51,13 +52,12 @@ function AppLayout() {
     return <Navigate to="/onbording1" replace />
   }
 
-  // Catch pending owners and route them to the pending page
-  if (role === 'pending_owner') {
-    return <PendingApproval />
-  }
+  // Only restaurant_owner, admin, and super_admin can access the dashboard
+  if (role !== 'restaurant_owner' && role !== 'admin' && role !== 'super_admin') {
+    if (role === 'pending_owner') {
+      return <PendingApproval />
+    }
 
-  // Only approved owners and admins can access the dashboard
-  if (role !== 'restaurant_owner' && role !== 'admin') {
     return <Navigate to="/login" replace />
   }
 
@@ -99,23 +99,6 @@ function AppLayout() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/setup-admin" element={<SetupSuperAdmin />} />
-          {/* Onboarding Routes — single provider keeps data alive across steps */}
-          <Route element={<OnboardingProvider><Outlet /></OnboardingProvider>}>
-            <Route path="/onbording1" element={<OnboardingGuard><Onbording1 /></OnboardingGuard>} />
-            <Route path="/onbording2" element={<OnboardingGuard><Onbording2 /></OnboardingGuard>} />
-            <Route path="/onbording3" element={<OnboardingGuard><Onbording3 /></OnboardingGuard>} />
-          </Route>
-          
-          {/* Protected Routes Wrapper */}
-          <Route path="/*" element={<AppLayout />} />
-        </Routes>
-      </BrowserRouter>
       <MenuProvider>
         <Toaster position="top-center" />
         <BrowserRouter>
@@ -123,6 +106,7 @@ function App() {
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/setup-admin" element={<SetupSuperAdmin />} />
             {/* Onboarding Routes — single provider keeps data alive across steps */}
             <Route element={<OnboardingProvider><Outlet /></OnboardingProvider>}>
               <Route path="/onbording1" element={<OnboardingGuard><Onbording1 /></OnboardingGuard>} />
