@@ -25,40 +25,33 @@ export default function Login() {
       // 2. Check if user doc exists in Firestore 'users' collection
       const userDoc = await getDoc(doc(db, "users", uid));
 
-      // 3. Compare role — only restaurant_owner and super_admin are allowed
-      const data = userDoc.data();
-      const role = data?.role;
-
-      if (role !== "restaurant_owner" && role !== "super_admin") {
-        await auth.signOut();
-        setError("Access denied. Only restaurant owners and admins can log in.");
+      if (!userDoc.exists()) {
+        // No user doc = new user, redirect to onboarding
+        navigate("/onbording1");
         return;
       }
 
-      // 4. Role is allowed → redirect based on role
+      // 3. Get user role
+      const data = userDoc.data();
+      const role = data?.role;
+
+      // 4. Check allowed roles
+      const allowedRoles = ["restaurant_owner", "pending_owner", "admin", "super_admin"];
+      
+      if (!role || !allowedRoles.includes(role)) {
+        await auth.signOut();
+        setError("Access denied. Invalid role for this platform.");
+        return;
+      }
+
+      // 5. Redirect based on role
       if (role === "super_admin") {
-        navigate("/admin");
+        navigate("/dashboard/admin");
       } else {
-        navigate("/");
+        // restaurant_owner, pending_owner, admin all go to dashboard
+        // AppLayout will show PendingApproval for pending_owner
+        navigate("/dashboard");
       }
-      // If userDoc exists, verify they have an allowed role
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        const role = data?.role;
-
-        // Allow 'restaurant_owner', 'pending_owner', and 'admin'
-        const allowedRoles = ["restaurant_owner", "pending_owner", "admin"];
-
-        if (role && !allowedRoles.includes(role)) {
-          await auth.signOut();
-          setError("Access denied. Invalid role for this platform.");
-          return;
-        }
-      }
-
-      // Allow access! (App.tsx will automatically read their role via AuthContext 
-      // and redirect to Dashboard, PendingApproval, or Onbording1)
-      navigate("/");
     } catch {
       setError("Invalid email or password. Please try again.");
     } finally {

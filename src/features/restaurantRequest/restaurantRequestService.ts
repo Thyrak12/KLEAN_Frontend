@@ -8,6 +8,7 @@ import {
   where,
   updateDoc,
   deleteDoc,
+  setDoc,
   Query,
   QueryConstraint,
   serverTimestamp,
@@ -155,9 +156,48 @@ export async function deleteRestaurantRequest(requestId: string): Promise<void> 
   }
 }
 
-// Approve restaurant request
+// Approve restaurant request - Creates restaurant and updates user role
 export async function approveRestaurantRequest(requestId: string): Promise<void> {
-  return updateRequestStatus(requestId, "approved");
+  try {
+    // 1. Get the request data
+    const request = await getRestaurantRequest(requestId);
+    if (!request) {
+      throw new Error("Restaurant request not found");
+    }
+
+    // 2. Create restaurant document (clone from request, without status fields)
+    const {
+      id,
+      status,
+      rejectionReason,
+      createdAt,
+      updatedAt,
+      ...restaurantData
+    } = request;
+
+    // Create restaurant with owner's UID as document ID
+    const restaurantDocRef = doc(db, "restaurants", request.ownerId);
+    await setDoc(restaurantDocRef, {
+      ...restaurantData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    // 3. Update user role from pending_owner to restaurant_owner
+    const userDocRef = doc(db, "users", request.ownerId);
+    await updateDoc(userDocRef, {
+      role: "restaurant_owner",
+      approvedAt: serverTimestamp(),
+    });
+
+    // 4. Update request status to approved
+    await updateRequestStatus(requestId, "approved");
+
+    console.log(`Approved restaurant: ${request.restaurantName} for owner: ${request.ownerId}`);
+  } catch (error) {
+    console.error("Error approving restaurant request:", error);
+    throw error;
+  }
 }
 
 // Reject restaurant request

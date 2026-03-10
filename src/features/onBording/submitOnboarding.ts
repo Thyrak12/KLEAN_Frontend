@@ -3,6 +3,16 @@ import { doc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { auth, db, storage } from "../../config/firebase";
 import type { Step1Data, Step2Data, Step3Data } from "./OnboardingContext";
+import emailjs from "@emailjs/browser";
+import toast from "react-hot-toast";
+
+// EmailJS Configuration
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || "YOUR_SERVICE_ID";
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || "YOUR_TEMPLATE_ID";
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || "YOUR_PUBLIC_KEY";
+
+// Initialize EmailJS with your public key
+emailjs.init(EMAILJS_PUBLIC_KEY);
 
 interface SubmitOnboardingParams {
   step1: Step1Data;
@@ -22,6 +32,7 @@ export async function submitOnboarding({
   refreshUserData,
 }: SubmitOnboardingParams) {
   const user = auth.currentUser;
+  console.log(user?.email);
   if (!user) {
     alert("You must be logged in to save.");
     return;
@@ -107,7 +118,65 @@ export async function submitOnboarding({
   console.log("User Data:", userData);
   console.log("Restaurant Request Data:", restaurantRequestData);
   console.log("Onboarding submission completed successfully - awaiting admin approval");
-  
+
+  // 5. Send confirmation email to restaurant owner
+  try {
+    console.log("Sending email to:", user.email);
+    console.log("EmailJS Config:", { 
+      serviceId: EMAILJS_SERVICE_ID, 
+      templateId: EMAILJS_TEMPLATE_ID,
+      publicKey: EMAILJS_PUBLIC_KEY ? "Set" : "Not Set"
+    });
+    
+    const emailResponse = await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      EMAILJS_TEMPLATE_ID,
+      {
+        to_email: user.email,
+        to_name: step1.restaurantName,
+        restaurant_name: step1.restaurantName,
+        owner_email: user.email,
+        reply_to: user.email,
+        message: `Thank you for registering "${step1.restaurantName}" on DineFlow! 
+
+Your restaurant registration request has been submitted successfully and is currently under review by our admin team.
+
+What happens next:
+• Our team will review your restaurant details within 1-2 business days
+• You will receive an email notification once your restaurant is approved
+• After approval, you'll have full access to manage your restaurant dashboard
+
+If you have any questions, please don't hesitate to contact our support team.`,
+        status: "Pending Approval",
+      },
+      EMAILJS_PUBLIC_KEY
+    );
+    console.log("Email sent successfully!", emailResponse);
+  } catch (err) {
+    console.error("Failed to send confirmation email:", err);
+    // Don't throw - email failure shouldn't block the onboarding process
+  }
+
+  // 6. Show success toast notification
+  toast.success(
+    "🎉 Registration submitted successfully!\n\nPlease check your email for confirmation. Your request is pending admin approval (1-2 business days).",
+    {
+      duration: 6000,
+      style: {
+        background: "#10B981",
+        color: "#fff",
+        padding: "16px",
+        borderRadius: "12px",
+        fontSize: "14px",
+        maxWidth: "400px",
+      },
+      iconTheme: {
+        primary: "#fff",
+        secondary: "#10B981",
+      },
+    }
+  );
+
   // Refresh user data to ensure AuthContext has latest role info
   if (refreshUserData) {
     console.log("Refreshing user data...");
@@ -115,6 +184,6 @@ export async function submitOnboarding({
     console.log("User data refreshed");
   }
   
-  console.log("Navigating to dashboard...");
-  navigate("/");
+  console.log("Navigating to pending approval page...");
+  navigate("/dashboard");
 }
