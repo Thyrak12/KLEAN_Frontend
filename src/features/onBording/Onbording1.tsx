@@ -1,18 +1,29 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Image as ImageIcon } from "lucide-react"; 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useJsApiLoader, Autocomplete } from "@react-google-maps/api"; 
+
+const LIBRARIES: string[] = ["places"];
 
 // 1. Import the hook correctly
 import { useOnboarding } from "./OnboardingContext";
 
 // --- Validation Utils ---
 const validateCambodianPhone = (phone: string): boolean => {
-  const cleaned = phone.replace(/[+855\s-()]/g, '');
-  return /^\d{8,9}$/.test(cleaned);
+  // Remove all non-numeric characters
+  const cleaned = phone.replace(/[^0-9]/g, '');
+  
+  // Regex explanation:
+  // ^0?              -> Optional leading 0
+  // (1[0-9]|2[3-6]|3[1-689]|4[2-4]|5[2-5]|6[0-13-46-9]|7[0-16-9]|8[0-13-9]|9[0-57-9]) -> Valid Cambodian Operator Prefixes
+  // \d{6,7}$         -> Followed by 6 or 7 more digits
+  const cambodiaPhoneRegex = /^0?(1[0-9]|2[3-6]|3[1-689]|4[2-4]|5[2-5]|6[0-13-46-9]|7[0-16-9]|8[0-13-9]|9[0-57-9])\d{6,7}$/;
+
+  return cambodiaPhoneRegex.test(cleaned);
 };
 
 const extractCoordinates = (url: string) => {
@@ -39,9 +50,10 @@ const onboardingSchema = z.object({
   restaurantName: z.string().min(1, "Restaurant name is required"),
   phone: z.string()
     .min(8, "Phone number must have 8-9 digits")
-    .max(9, "Phone number must not exceed 9 digits")
+    .max(10, "Phone number must not exceed 9 digits")
     .refine(validateCambodianPhone, "Only 8-9 digits are allowed"),
   contactInfo: z.string().min(1, "Contact info is required"),
+  address: z.string().min(1, "Address is required"),
   googleMapLink: z.string().min(1, "Google Map link is required").url("Must be a valid URL"),
 });
 
@@ -130,6 +142,40 @@ const Onbording1 = () => {
     navigate("/onbording2");
   };
 
+  // 1. Google Maps setup
+  // Use the constant array so it doesn't trigger endless re-renders
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY , 
+    libraries: LIBRARIES,
+  });
+
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  // 2. Handle when user selects a place from the autocomplete dropdown
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      
+      if (place.formatted_address) {
+        // Update the form's address field
+        setValue("address", place.formatted_address, { shouldValidate: true });
+        
+        // Optionally auto-fill coordinates / Google Maps Link if available
+        if (place.geometry?.location) {
+          const lat = place.geometry.location.lat();
+          const lng = place.geometry.location.lng();
+          setLatitude(lat);
+          setLongitude(lng);
+          
+          const mapLink = place.url || `https://maps.google.com/?q=${lat},${lng}`;
+          setGoogleMapLink(mapLink);
+          setValue('googleMapLink', mapLink, { shouldValidate: true });
+        }
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 relative overflow-hidden font-sans text-gray-800">
       <form onSubmit={handleSubmit(onSubmit)} className="relative z-10 px-8 py-8 max-w-7xl mx-auto h-screen flex flex-col">
@@ -177,6 +223,33 @@ const Onbording1 = () => {
                         {...register("contactInfo")}
                     />
                     {errors.contactInfo && <span className="text-red-500 text-sm">{errors.contactInfo.message}</span>}
+                </div>
+                {/* Address */}
+                <div className="flex flex-col gap-2">
+                    <label className="font-medium text-gray-700">Address</label>
+                    {isLoaded ? (
+                      <Autocomplete
+                        onLoad={(autocomplete) => { autocompleteRef.current = autocomplete; }}
+                        onPlaceChanged={onPlaceChanged}
+                        options={{ componentRestrictions: { country: "kh" } }} // Optional: restrict to Cambodia
+                      >
+                        <input 
+                            type="text" 
+                            placeholder="Street address, city, etc."
+                            className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                            {...register("address")}
+                        />
+                      </Autocomplete>
+                    ) : (
+                      // Fallback while Google script loads
+                      <input 
+                          type="text" 
+                          placeholder="Loading Google Autocomplete..."
+                          disabled
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-gray-100"
+                      />
+                    )}
+                    {errors.address && <span className="text-red-500 text-sm">{errors.address.message}</span>}
                 </div>
 
                 {/* Google Map Link */}
