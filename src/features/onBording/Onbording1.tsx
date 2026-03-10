@@ -7,7 +7,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useJsApiLoader, Autocomplete } from "@react-google-maps/api"; 
 
-const LIBRARIES: string[] = ["places"];
+type Library = "core" | "maps" | "places" | "geocoding" | "routes" | "marker" | "geometry" | "elevation" | "streetView" | "journeySharing" | "drawing" | "visualization";
+
+const LIBRARIES: Library[] = ["places"];
 
 // 1. Import the hook correctly
 import { useOnboarding } from "./OnboardingContext";
