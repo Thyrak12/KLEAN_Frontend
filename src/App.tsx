@@ -142,7 +142,7 @@ function App() {
             </Route>
 
             {/* Protected Routes Wrapper */}
-            <Route path="/dashboard/*" element={<AppLayout />} />
+            <Route path="/*" element={<AppLayout />} />
           </Routes>
         </BrowserRouter>
       </MenuProvider>

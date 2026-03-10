@@ -26,8 +26,8 @@ export default function SuperAdminGuard({ children }: SuperAdminGuardProps) {
     return <Navigate to="/login" replace />;
   }
 
-  // Only super_admin can access admin routes
-  if (role !== "super_admin") {
+  // Allow both super_admin and admin to access admin routes
+  if (role !== "super_admin" && role !== "admin") {
     return <Navigate to="/" replace />;
   }
 
