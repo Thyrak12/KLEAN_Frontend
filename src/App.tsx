@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import './App.css'
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 
-import { AuthProvider, useAuth } from './features/auth/AuthContext'
-import { MenuProvider } from './features/menu/MenuContext'
+import { AuthProvider, useAuth } from "./features/auth/AuthContext";
+import { MenuProvider } from "./features/menu/MenuContext";
 
 import Dashboard from "./page/dashboard";
 import RestaurantProfile from "./page/RestaurantProfile";
@@ -25,39 +26,39 @@ import AdminRestaurantManage from "./page/admin/restaurant-manage";
 import AdminUsers from "./page/admin/users";
 import AdminRestaurantRequests from "./page/admin/restaurant-request";
 import AdminSettings from "./page/admin/setting";
-import { SeederPage } from "./page/admin/seeder";
-import PendingApproval from './page/PendingApproval';
+import PendingApproval from './page/PendingApproval' // Add new import at the top
 
 function AppLayout() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const { user, role, loading } = useAuth()
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { user, role, loading } = useAuth();
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-        <p className="text-lg text-gray-600">Loading your dashboard...</p>
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Loading your dashboard...</p>
+        </div>
       </div>
-    </div>
+    );
   }
 
   // Not logged in → redirect to login
   if (!user) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" replace />;
   }
 
   // Logged in but no role yet (hasn't completed onboarding) → redirect to onboarding
   if (!role) {
-    return <Navigate to="/onbording1" replace />
+    return <Navigate to="/onbording1" replace />;
   }
 
-  // Catch pending owners and route them to the pending page
-  if (role === 'pending_owner') {
-    return <PendingApproval />
-  }
+  // Only restaurant_owner, admin, and super_admin can access the dashboard
+  if (role !== 'restaurant_owner' && role !== 'admin' && role !== 'super_admin') {
+    if (role === 'pending_owner') {
+      return <PendingApproval />
+    }
 
-  // Only approved owners and admins can access the dashboard
-  if (role !== 'restaurant_owner' && role !== 'admin') {
     return <Navigate to="/login" replace />
   }
 
@@ -89,55 +90,64 @@ function AppLayout() {
               element={<SuperAdminGuard><AdminRestaurantRequests /></SuperAdminGuard>}
             />
             <Route path="/admin/settings" element={<SuperAdminGuard><AdminSettings /></SuperAdminGuard>} />
-            {/* Dev-only Seeder Route */}
-            {import.meta.env.DEV && <Route path="/admin/seeder" element={<SuperAdminGuard><SeederPage /></SuperAdminGuard>} />}
           </Routes>
         </div>
       </main>
     </div>
   );
 }
-
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/setup-admin" element={<SetupSuperAdmin />} />
-          {/* Onboarding Routes — single provider keeps data alive across steps */}
-          <Route element={<OnboardingProvider><Outlet /></OnboardingProvider>}>
-            <Route path="/onbording1" element={<OnboardingGuard><Onbording1 /></OnboardingGuard>} />
-            <Route path="/onbording2" element={<OnboardingGuard><Onbording2 /></OnboardingGuard>} />
-            <Route path="/onbording3" element={<OnboardingGuard><Onbording3 /></OnboardingGuard>} />
-          </Route>
-          
-          {/* Protected Routes Wrapper */}
-          <Route path="/*" element={<AppLayout />} />
-        </Routes>
-      </BrowserRouter>
       <MenuProvider>
+        <Toaster position="top-center" />
         <BrowserRouter>
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/setup-admin" element={<SetupSuperAdmin />} />
             {/* Onboarding Routes — single provider keeps data alive across steps */}
-            <Route element={<OnboardingProvider><Outlet /></OnboardingProvider>}>
-              <Route path="/onbording1" element={<OnboardingGuard><Onbording1 /></OnboardingGuard>} />
-              <Route path="/onbording2" element={<OnboardingGuard><Onbording2 /></OnboardingGuard>} />
-              <Route path="/onbording3" element={<OnboardingGuard><Onbording3 /></OnboardingGuard>} />
+            <Route
+              element={
+                <OnboardingProvider>
+                  <Outlet />
+                </OnboardingProvider>
+              }
+            >
+              <Route
+                path="/onbording1"
+                element={
+                  <OnboardingGuard>
+                    <Onbording1 />
+                  </OnboardingGuard>
+                }
+              />
+              <Route
+                path="/onbording2"
+                element={
+                  <OnboardingGuard>
+                    <Onbording2 />
+                  </OnboardingGuard>
+                }
+              />
+              <Route
+                path="/onbording3"
+                element={
+                  <OnboardingGuard>
+                    <Onbording3 />
+                  </OnboardingGuard>
+                }
+              />
             </Route>
-            
+
             {/* Protected Routes Wrapper */}
             <Route path="/dashboard/*" element={<AppLayout />} />
           </Routes>
         </BrowserRouter>
       </MenuProvider>
     </AuthProvider>
-  )
+  );
 }
 
 export default App;

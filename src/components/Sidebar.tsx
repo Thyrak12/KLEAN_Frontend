@@ -13,27 +13,27 @@ import {
 } from "lucide-react";
 
 const menuItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/profile", label: "Restaurant Profile", icon: Store },
-  { to: "/menus", label: "Menu & Promotions", icon: UtensilsCrossed },
-  { to: "/feedback", label: "Feedback Monitor", icon: MessageSquareMore },
-  { to: "/setting", label: "Settings", icon: Store },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard/profile", label: "Restaurant Profile", icon: Store },
+  { to: "/dashboard/menus", label: "Menu & Promotions", icon: UtensilsCrossed },
+  { to: "/dashboard/feedback", label: "Feedback Monitor", icon: MessageSquareMore },
+  { to: "/dashboard/setting", label: "Settings", icon: Store },
 ];
 
 const adminItems = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard/admin", label: "Dashboard", icon: LayoutDashboard },
   {
-    to: "/admin/restaurants-manage",
+    to: "/dashboard/admin/restaurants-manage",
     label: "Restaurant Management",
     icon: Store,
   },
-  { to: "/admin/users", label: "Users Management", icon: Users },
+  { to: "/dashboard/admin/users", label: "Users Management", icon: Users },
   {
-    to: "/admin/restaurants-request",
+    to: "/dashboard/admin/restaurants-request",
     label: "Restraurant Requests",
     icon: MessageSquareMore,
   },
-  { to: "/admin/settings", label: "Settings", icon: Settings },
+  { to: "/dashboard/admin/settings", label: "Settings", icon: Settings },
 ];
 
 interface SidebarProps {
@@ -43,7 +43,7 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith("/admin");
+  const isAdminRoute = location.pathname.startsWith("/dashboard/admin");
   const items = isAdminRoute ? adminItems : menuItems;
 
   return (
@@ -85,7 +85,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <NavLink
               key={to}
               to={to}
-              end={to === "/" || to === "/admin"}
+              end={to === "/dashboard" || to === "/dashboard/admin"}
               title={collapsed ? label : undefined}
               className={({ isActive }) =>
                 [

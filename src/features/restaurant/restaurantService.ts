@@ -72,6 +72,9 @@ export async function getAllRestaurantsForAdmin(): Promise<RestaurantListItem[]>
           name: restaurant.restaurantName,
           email: email,
           phone: restaurant.phone,
+          address: restaurant.address,
+          category: restaurant.category,
+          createdAt: restaurant.createdAt,
         });
       } catch (err) {
         console.error(`Error fetching user data for ${restaurant.uid}:`, err);
@@ -81,6 +84,9 @@ export async function getAllRestaurantsForAdmin(): Promise<RestaurantListItem[]>
           name: restaurant.restaurantName,
           email: "",
           phone: restaurant.phone,
+          address: restaurant.address,
+          category: restaurant.category,
+          createdAt: restaurant.createdAt,
         });
       }
     }
