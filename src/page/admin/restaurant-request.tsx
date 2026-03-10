@@ -60,10 +60,10 @@ export default function AdminRestaurantRequests() {
   const filtered = requests.filter(
     (r) =>
       r.restaurantName.toLowerCase().includes(search.toLowerCase()) ||
-      r.ownerId.toLowerCase().includes(search.toLowerCase()) ||
       r.email?.toLowerCase().includes(search.toLowerCase()) ||
       r.phone?.includes(search) ||
-      r.id?.includes(search)
+      r.location.toLowerCase().includes(search.toLowerCase()) ||
+      r.cuisineType?.toLowerCase().includes(search.toLowerCase())
   );
 
   // Sort requests
@@ -208,39 +208,53 @@ export default function AdminRestaurantRequests() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-amber-400 text-white">
-              <th className="py-3 px-4 text-left font-semibold text-xs">Restaurant ID</th>
+              <th className="py-3 px-4 text-left font-semibold text-xs">Order</th>
               <th className="py-3 px-4 text-left font-semibold text-xs">Restaurant Name</th>
-              <th className="py-3 px-4 text-left font-semibold text-xs">Owner Name</th>
               <th className="py-3 px-4 text-left font-semibold text-xs">Email</th>
               <th className="py-3 px-4 text-left font-semibold text-xs">Phone Number</th>
+              <th className="py-3 px-4 text-left font-semibold text-xs">Cuisine</th>
+              <th className="py-3 px-4 text-left font-semibold text-xs">Location</th>
+              <th className="py-3 px-4 text-left font-semibold text-xs">Submitted Date</th>
               <th className="py-3 px-4 text-center font-semibold text-xs">Action</th>
             </tr>
           </thead>
           <tbody>
-            {paginated.map((request, index) => (
-              <tr
-                key={`${request.restaurantName}-${index}`}
-                className={`border-b border-gray-100 ${
-                  index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                } hover:bg-amber-50 transition-colors`}
-              >
-                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.id || "-"}</td>
-                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.restaurantName}</td>
-                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.ownerId}</td>
-                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.email || "-"}</td>
-                <td className="py-2.5 px-4 text-gray-700 text-xs">{request.phone || "-"}</td>
-                <td className="py-2.5 px-4 text-center">
-                  <button
-                    onClick={() => openModal(request)}
-                    className="px-3 py-1.5 flex items-center justify-center gap-1.5 rounded-lg bg-amber-400 hover:bg-amber-500 text-white text-xs font-medium transition-colors"
-                    title="View Details"
-                  >
-                    <Eye size={14} />
-                    View Details
-                  </button>
+            {paginated.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="py-8 text-center text-gray-500">
+                  No pending restaurant requests
                 </td>
               </tr>
-            ))}
+            ) : (
+              paginated.map((request, index) => (
+                <tr
+                  key={`${request.restaurantName}-${index}`}
+                  className={`border-b border-gray-100 ${
+                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                  } hover:bg-amber-50 transition-colors`}
+                >
+                  <td className="py-2.5 px-4 text-gray-700 text-xs">{(currentPage - 1) * PAGE_SIZE + index + 1}</td>
+                  <td className="py-2.5 px-4 text-gray-700 text-xs">{request.restaurantName}</td>
+                  <td className="py-2.5 px-4 text-gray-700 text-xs">{request.email || "-"}</td>
+                  <td className="py-2.5 px-4 text-gray-700 text-xs">{request.phone || "-"}</td>
+                  <td className="py-2.5 px-4 text-gray-700 text-xs">{request.cuisineType || "-"}</td>
+                  <td className="py-2.5 px-4 text-gray-700 text-xs">{request.location || "-"}</td>
+                  <td className="py-2.5 px-4 text-gray-700 text-xs">
+                    {request.createdAt ? new Date(request.createdAt).toLocaleDateString() : "-"}
+                  </td>
+                  <td className="py-2.5 px-4 text-center">
+                    <button
+                      onClick={() => openModal(request)}
+                      className="px-3 py-1.5 flex items-center justify-center gap-1.5 rounded-lg bg-amber-400 hover:bg-amber-500 text-white text-xs font-medium transition-colors"
+                      title="View Details"
+                    >
+                      <Eye size={14} />
+                      View Details
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -304,58 +318,57 @@ export default function AdminRestaurantRequests() {
 
             {/* Modal Body */}
             <div className="p-6 space-y-6">
-              {/* Basic Info Section */}
+              {/* Business Overview */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                     <Utensils size={20} className="text-amber-500" />
-                    {selectedRequest.restaurantName}
+                    {selectedRequest.restaurantName || "Unnamed restaurant"}
                   </h3>
-                  {selectedRequest.cuisineType && (
-                    <span className="inline-block mt-1 px-3 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
-                      {selectedRequest.cuisineType}
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="inline-block px-3 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                      {selectedRequest.cuisineType || "Cuisine not provided"}
                     </span>
-                  )}
+                    <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full capitalize">
+                      {selectedRequest.status}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
                     <User size={14} /> Owner ID
                   </label>
-                  <p className="text-sm text-gray-900 font-medium">{selectedRequest.ownerId}</p>
+                  <p className="text-sm text-gray-900 font-medium break-all">{selectedRequest.ownerId || "Not provided"}</p>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-500">Request ID</label>
-                  <p className="text-sm text-gray-900 font-medium">#{selectedRequest.id || "-"}</p>
+                  <p className="text-sm text-gray-900 font-medium break-all">{selectedRequest.id || "Not available"}</p>
                 </div>
 
-                {selectedRequest.email && (
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
-                      <Mail size={14} /> Email
-                    </label>
-                    <p className="text-sm text-gray-900">{selectedRequest.email}</p>
-                  </div>
-                )}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                    <Mail size={14} /> Email
+                  </label>
+                  <p className="text-sm text-gray-900 break-all">{selectedRequest.email || "Not provided"}</p>
+                </div>
 
-                {selectedRequest.phone && (
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
-                      <Phone size={14} /> Phone Number
-                    </label>
-                    <p className="text-sm text-gray-900">{selectedRequest.phone}</p>
-                  </div>
-                )}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                    <Phone size={14} /> Phone Number
+                  </label>
+                  <p className="text-sm text-gray-900">{selectedRequest.phone || "Not provided"}</p>
+                </div>
               </div>
 
-              {/* Address/Location Section */}
+              {/* Location Section */}
               <div className="border-t pt-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
                     <MapPin size={14} /> Location
                   </label>
-                  <p className="text-sm text-gray-900">{selectedRequest.location}</p>
+                  <p className="text-sm text-gray-900">{selectedRequest.location || "Location not provided"}</p>
                 </div>
               </div>
 
@@ -365,61 +378,63 @@ export default function AdminRestaurantRequests() {
                   <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
                     <FileText size={14} /> Description
                   </label>
-                  <p className="text-sm text-gray-700 leading-relaxed">{selectedRequest.description}</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {selectedRequest.description || "Description not provided by applicant."}
+                  </p>
                 </div>
               </div>
 
-              {/* Additional Details */}
-              {(selectedRequest.openingHours || selectedRequest.seatingCapacity) && (
-                <div className="border-t pt-4 grid grid-cols-2 gap-4">
-                  {selectedRequest.openingHours && (
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
-                        <Clock size={14} /> Opening Hours
-                      </label>
-                      <p className="text-sm text-gray-900">{selectedRequest.openingHours}</p>
-                    </div>
-                  )}
-
-                  {selectedRequest.seatingCapacity && (
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-gray-500">Seating Capacity</label>
-                      <p className="text-sm text-gray-900">{selectedRequest.seatingCapacity} seats</p>
-                    </div>
-                  )}
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-500">Request Date</label>
-                    <p className="text-sm text-gray-900">
-                      {selectedRequest.createdAt
-                        ? new Date(selectedRequest.createdAt).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })
-                        : "-"}
-                    </p>
-                  </div>
+              {/* Operational Details */}
+              <div className="border-t pt-4 grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                    <Clock size={14} /> Opening Hours
+                  </label>
+                  <p className="text-sm text-gray-900">{selectedRequest.openingHours || "Not provided"}</p>
                 </div>
-              )}
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-500">Seating Capacity</label>
+                  <p className="text-sm text-gray-900">
+                    {selectedRequest.seatingCapacity ? `${selectedRequest.seatingCapacity} seats` : "Not provided"}
+                  </p>
+                </div>
+
+                <div className="space-y-1 col-span-2">
+                  <label className="text-xs font-medium text-gray-500">Submitted Date</label>
+                  <p className="text-sm text-gray-900">
+                    {selectedRequest.createdAt
+                      ? new Date(selectedRequest.createdAt).toLocaleString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : "Not available"}
+                  </p>
+                </div>
+              </div>
 
               {/* Documents Section */}
-              {selectedRequest.documents && selectedRequest.documents.length > 0 && (
-                <div className="border-t pt-4">
-                  <label className="text-xs font-medium text-gray-500 mb-2 block">Submitted Documents</label>
+              <div className="border-t pt-4">
+                <label className="text-xs font-medium text-gray-500 mb-2 block">Submitted Documents</label>
+                {selectedRequest.documents && selectedRequest.documents.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {selectedRequest.documents.map((doc, index) => (
                       <span
                         key={index}
-                        className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded-lg flex items-center gap-1"
+                        className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded-lg flex items-center gap-1 max-w-full"
                       >
                         <FileText size={12} />
-                        {doc}
+                        <span className="truncate">{doc}</span>
                       </span>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <p className="text-sm text-red-600">No supporting documents submitted.</p>
+                )}
+              </div>
             </div>
 
             {/* Modal Footer - Action Buttons */}

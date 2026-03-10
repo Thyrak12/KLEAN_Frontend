@@ -43,7 +43,8 @@ export default function AdminRestaurantManage() {
       r.name.toLowerCase().includes(search.toLowerCase()) ||
       r.email.toLowerCase().includes(search.toLowerCase()) ||
       r.phone.includes(search) ||
-      r.id.includes(search)
+      r.address.toLowerCase().includes(search.toLowerCase()) ||
+      r.category.toLowerCase().includes(search.toLowerCase())
   );
 
   // Sort
@@ -161,17 +162,20 @@ export default function AdminRestaurantManage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-amber-400 text-white">
-                  <th className="py-3 px-4 text-left font-semibold">Restaurant ID</th>
+                  <th className="py-3 px-4 text-left font-semibold">Order</th>
                   <th className="py-3 px-4 text-left font-semibold">Restaurant Name</th>
                   <th className="py-3 px-4 text-left font-semibold">Email</th>
                   <th className="py-3 px-4 text-left font-semibold">Phone Number</th>
+                  <th className="py-3 px-4 text-left font-semibold">Category</th>
+                  <th className="py-3 px-4 text-left font-semibold">Address</th>
+                  <th className="py-3 px-4 text-left font-semibold">Joined Date</th>
                   <th className="py-3 px-4 text-center font-semibold">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {paginated.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-gray-500">
+                    <td colSpan={8} className="py-8 text-center text-gray-500">
                       No restaurants found
                     </td>
                   </tr>
@@ -183,10 +187,15 @@ export default function AdminRestaurantManage() {
                         index % 2 === 0 ? "bg-white" : "bg-gray-50"
                       } hover:bg-amber-50 transition-colors`}
                     >
-                      <td className="py-3 px-4 text-gray-700 text-xs">{restaurant.id}</td>
+                      <td className="py-3 px-4 text-gray-700 text-xs">{(currentPage - 1) * PAGE_SIZE + index + 1}</td>
                       <td className="py-3 px-4 text-gray-700">{restaurant.name}</td>
                       <td className="py-3 px-4 text-gray-700">{restaurant.email || "N/A"}</td>
                       <td className="py-3 px-4 text-gray-700">{restaurant.phone}</td>
+                      <td className="py-3 px-4 text-gray-700">{restaurant.category || "N/A"}</td>
+                      <td className="py-3 px-4 text-gray-700">{restaurant.address || "N/A"}</td>
+                      <td className="py-3 px-4 text-gray-700">
+                        {restaurant.createdAt ? new Date(restaurant.createdAt).toLocaleDateString() : "N/A"}
+                      </td>
                       <td className="py-3 px-4 text-center">
                         <button
                           onClick={() => handleRemove(restaurant.id)}
