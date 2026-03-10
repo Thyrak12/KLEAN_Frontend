@@ -17,6 +17,15 @@ import {
 } from "firebase/firestore";
 import { db } from "../../config/firebase";
 import type { RestaurantRequest, RestaurantRequestStatus } from "../../types/restaurantRequest";
+import emailjs from "@emailjs/browser";
+
+// EmailJS Configuration
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || "YOUR_SERVICE_ID";
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || "YOUR_TEMPLATE_ID";
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || "YOUR_PUBLIC_KEY";
+
+// Initialize EmailJS with your public key
+emailjs.init(EMAILJS_PUBLIC_KEY);
 
 const COLLECTION_NAME = "restaurantRequests";
 
@@ -261,6 +270,46 @@ export async function approveRestaurantRequest(requestId: string): Promise<void>
     });
 
     await batch.commit();
+
+    // Send approval email notification to the restaurant owner
+    try {
+      const ownerEmail = requestData.email;
+      const restaurantName = requestData.restaurantName;
+      
+      if (ownerEmail) {
+        console.log("Sending approval email to:", ownerEmail);
+        
+        await emailjs.send(
+          EMAILJS_SERVICE_ID,
+          EMAILJS_TEMPLATE_ID,
+          {
+            to_email: ownerEmail,
+            to_name: restaurantName,
+            restaurant_name: restaurantName,
+            owner_email: ownerEmail,
+            reply_to: ownerEmail,
+            message: `Great news! Your restaurant "${restaurantName}" has been approved! 🎉
+
+Your restaurant registration has been reviewed and approved by our admin team.
+
+What you can do now:
+• Access your restaurant dashboard to manage your menu and promotions
+• Update your restaurant information and settings
+• Start receiving customer reservations and feedback
+
+Thank you for joining DineFlow! We're excited to have you on board.
+
+If you have any questions, please don't hesitate to contact our support team.`,
+            status: "Approved",
+          },
+          EMAILJS_PUBLIC_KEY
+        );
+        console.log("Approval email sent successfully to:", ownerEmail);
+      }
+    } catch (emailError) {
+      console.error("Failed to send approval email:", emailError);
+      // Don't throw - email failure shouldn't block the approval process
+    }
   } catch (error) {
     console.error("Error approving restaurant request:", error);
     throw error;
