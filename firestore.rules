@@ -5,12 +5,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    function userDocPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
     function role() {
-      return isSignedIn() && userDoc().exists() ? userDoc().data.role : null;
+      return isSignedIn() && exists(userDocPath()) ? get(userDocPath()).data.role : null;
     }
 
     function isSuperAdmin() {
@@ -21,26 +21,73 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function isRestaurantOwner(restaurantId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.uid == request.auth.uid;
+    }
+
     match /users/{userId} {
-      // TEMP DEV RULES for admin dashboard testing.
-      // Any signed-in user can read/write user profiles.
-      // Tighten after testing.
-      allow read, create, update: if isSignedIn();
+      // User can read own profile; super admin can read all
+      allow read: if isOwner(userId) || isSuperAdmin();
+
+      // User can create/update own profile; super admin can update any user role
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isSuperAdmin();
       allow delete: if isSuperAdmin();
     }
 
     match /restaurants/{restaurantId} {
       allow read: if isSignedIn();
-      allow create: if isOwner(restaurantId) || isSuperAdmin();
-      allow update: if isOwner(restaurantId) || isSuperAdmin();
+      allow create: if (request.resource.data.uid == request.auth.uid) || isSuperAdmin();
+      allow update: if isRestaurantOwner(restaurantId) || isSuperAdmin();
       allow delete: if isSuperAdmin();
+
+      match /menu_items/{itemId} {
+        allow read: if isSignedIn();
+        allow create, update, delete: if isRestaurantOwner(restaurantId) || isSuperAdmin();
+      }
+
+      match /promotions/{promoId} {
+        allow read: if isSignedIn();
+        allow create, update, delete: if isRestaurantOwner(restaurantId) || isSuperAdmin();
+      }
+
+      match /reviews/{reviewId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn() && (
+          request.auth.uid == resource.data.userId ||
+          isRestaurantOwner(restaurantId) ||
+          isSuperAdmin()
+        );
+      }
     }
 
     match /restaurantRequests/{requestId} {
-      // TEMP DEV RULES for seeding:
-      // Any signed-in user can create/read/write restaurant requests.
-      // Tighten this after seeding is complete.
-      allow read, create, update, delete: if isSignedIn();
+      // Owner can read own request; super admin can read all
+      allow read: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.uid == request.auth.uid ||
+        isSuperAdmin()
+      );
+
+      // Owner creates own request; super admin can create for testing/migration
+      allow create: if isSignedIn() && (
+        request.resource.data.ownerId == request.auth.uid ||
+        request.resource.data.uid == request.auth.uid ||
+        isSuperAdmin()
+      );
+
+      // Super admin approves/rejects
+      allow update, delete: if isSuperAdmin();
+    }
+
+    match /chats/{uid}/messages/{messageId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
