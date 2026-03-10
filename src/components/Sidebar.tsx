@@ -1,4 +1,5 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+import { useAuth } from "../features/auth/AuthContext";
 import logo from "../assets/logo.png";
 
 import {
@@ -13,27 +14,27 @@ import {
 } from "lucide-react";
 
 const menuItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/dashboard/profile", label: "Restaurant Profile", icon: Store },
-  { to: "/dashboard/menus", label: "Menu & Promotions", icon: UtensilsCrossed },
-  { to: "/dashboard/feedback", label: "Feedback Monitor", icon: MessageSquareMore },
-  { to: "/dashboard/setting", label: "Settings", icon: Store },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/profile", label: "Restaurant Profile", icon: Store },
+  { to: "/menus", label: "Menu & Promotions", icon: UtensilsCrossed },
+  { to: "/feedback", label: "Feedback Monitor", icon: MessageSquareMore },
+  { to: "/setting", label: "Settings", icon: Store },
 ];
 
 const adminItems = [
-  { to: "/dashboard/admin", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
   {
-    to: "/dashboard/admin/restaurants-manage",
+    to: "/admin/restaurants-manage",
     label: "Restaurant Management",
     icon: Store,
   },
-  { to: "/dashboard/admin/users", label: "Users Management", icon: Users },
+  { to: "/admin/users", label: "Users Management", icon: Users },
   {
-    to: "/dashboard/admin/restaurants-request",
+    to: "/admin/restaurants-request",
     label: "Restraurant Requests",
     icon: MessageSquareMore,
   },
-  { to: "/dashboard/admin/settings", label: "Settings", icon: Settings },
+  { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 interface SidebarProps {
@@ -42,9 +43,9 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
-  const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith("/dashboard/admin");
-  const items = isAdminRoute ? adminItems : menuItems;
+  const { role } = useAuth();
+  const isAdmin = role === "admin" || role === "super_admin";
+  const items = isAdmin ? adminItems : menuItems;
 
   return (
     <aside
@@ -85,7 +86,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <NavLink
               key={to}
               to={to}
-              end={to === "/dashboard" || to === "/dashboard/admin"}
+              end={to === "/" || to === "/admin"}
               title={collapsed ? label : undefined}
               className={({ isActive }) =>
                 [

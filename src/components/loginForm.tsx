@@ -38,7 +38,7 @@ export default function Login() {
         return;
       }
 
-      if (role === "super_admin") {
+      if (role === "super_admin" || role === "admin") {
         navigate("/admin");
         return;
       }
