@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { auth, db } from "../config/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth/web-extension";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import logo from "../assets/logo.png"; // Adjust the path if needed
 
@@ -18,46 +18,31 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      // 1. Authenticate with Firebase
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
-
-      // 2. Check if user doc exists in Firestore 'users' collection
       const userDoc = await getDoc(doc(db, "users", uid));
 
-      // 3. Compare role — only restaurant_owner and super_admin are allowed
-      const data = userDoc.data();
-      const role = data?.role;
-
-      if (role !== "restaurant_owner" && role !== "super_admin") {
+      if (!userDoc.exists()) {
         await auth.signOut();
-        setError("Access denied. Only restaurant owners and admins can log in.");
+        setError("Account profile not found. Please contact support.");
         return;
       }
 
-      // 4. Role is allowed → redirect based on role
+      const data = userDoc.data();
+      const role = data?.role as string | undefined;
+      const allowedRoles = ["restaurant_owner", "pending_owner", "admin", "super_admin"];
+
+      if (!role || !allowedRoles.includes(role)) {
+        await auth.signOut();
+        setError("Access denied. Invalid role for this platform.");
+        return;
+      }
+
       if (role === "super_admin") {
         navigate("/admin");
-      } else {
-        navigate("/");
-      }
-      // If userDoc exists, verify they have an allowed role
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        const role = data?.role;
-
-        // Allow 'restaurant_owner', 'pending_owner', and 'admin'
-        const allowedRoles = ["restaurant_owner", "pending_owner", "admin"];
-
-        if (role && !allowedRoles.includes(role)) {
-          await auth.signOut();
-          setError("Access denied. Invalid role for this platform.");
-          return;
-        }
+        return;
       }
 
-      // Allow access! (App.tsx will automatically read their role via AuthContext 
-      // and redirect to Dashboard, PendingApproval, or Onbording1)
       navigate("/");
     } catch {
       setError("Invalid email or password. Please try again.");

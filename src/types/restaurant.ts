@@ -32,4 +32,7 @@ export interface RestaurantListItem {
   name: string;
   email: string;
   phone: string;
+  address: string;
+  category: string;
+  createdAt?: Date;
 }

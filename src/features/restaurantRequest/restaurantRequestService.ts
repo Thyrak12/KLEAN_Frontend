@@ -6,14 +6,26 @@ import {
   getDocs,
   query,
   where,
+  limit,
   updateDoc,
   deleteDoc,
+  setDoc,
   Query,
   QueryConstraint,
   serverTimestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../../config/firebase";
 import type { RestaurantRequest, RestaurantRequestStatus } from "../../types/restaurantRequest";
+import emailjs from "@emailjs/browser";
+
+// EmailJS Configuration
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || "YOUR_SERVICE_ID";
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || "YOUR_TEMPLATE_ID";
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || "YOUR_PUBLIC_KEY";
+
+// Initialize EmailJS with your public key
+emailjs.init(EMAILJS_PUBLIC_KEY);
 
 const COLLECTION_NAME = "restaurantRequests";
 
@@ -155,9 +167,153 @@ export async function deleteRestaurantRequest(requestId: string): Promise<void> 
   }
 }
 
-// Approve restaurant request
+// Approve restaurant request - Creates restaurant and updates user role
 export async function approveRestaurantRequest(requestId: string): Promise<void> {
-  return updateRequestStatus(requestId, "approved");
+  try {
+    const requestRef = doc(db, COLLECTION_NAME, requestId);
+    const requestSnap = await getDoc(requestRef);
+
+    if (!requestSnap.exists()) {
+      throw new Error("Restaurant request not found");
+    }
+
+    const requestData = requestSnap.data() as RestaurantRequest & {
+      uid?: string;
+      userId?: string;
+    };
+
+    const ownerIdFromRequest = requestData.ownerId || requestData.uid || requestData.userId;
+
+    if (!ownerIdFromRequest) {
+      throw new Error("Invalid restaurant request: missing ownerId/uid/userId");
+    }
+
+    let resolvedOwnerId = ownerIdFromRequest;
+
+    // Validate owner ID against users collection. Some old requests may store non-UID IDs.
+    const ownerUserRef = doc(db, "users", resolvedOwnerId);
+    const ownerUserSnap = await getDoc(ownerUserRef);
+
+    if (!ownerUserSnap.exists()) {
+      const requestEmail = requestData.email?.trim().toLowerCase();
+      if (!requestEmail) {
+        throw new Error(
+          `Owner user not found for ownerId '${resolvedOwnerId}', and request email is missing`
+        );
+      }
+
+      const usersByEmail = await getDocs(
+        query(collection(db, "users"), where("email", "==", requestEmail), limit(1))
+      );
+
+      if (usersByEmail.empty) {
+        throw new Error(
+          `Owner user not found for ownerId '${resolvedOwnerId}' and no user matched email '${requestEmail}'`
+        );
+      }
+
+      resolvedOwnerId = usersByEmail.docs[0].id;
+    }
+
+    const restaurantRef = doc(db, "restaurants", resolvedOwnerId);
+    const userRef = doc(db, "users", resolvedOwnerId);
+
+    const batch = writeBatch(db);
+
+    const {
+      status: _status,
+      rejectionReason: _rejectionReason,
+      updatedAt: _requestUpdatedAt,
+      ...requestFieldsWithoutStatus
+    } = requestData as RestaurantRequest & {
+      uid?: string;
+      userId?: string;
+      updatedAt?: unknown;
+      rejectionReason?: string;
+    };
+
+    batch.set(
+      restaurantRef,
+      {
+        ...requestFieldsWithoutStatus,
+        uid: resolvedOwnerId,
+        ownerId: resolvedOwnerId,
+        address: requestData.location || (requestFieldsWithoutStatus as { address?: string }).address || "",
+        contactInfo:
+          requestData.email ||
+          requestData.phone ||
+          (requestFieldsWithoutStatus as { contactInfo?: string }).contactInfo ||
+          "",
+        fromRequestId: requestId,
+        approvedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    batch.set(
+      userRef,
+      {
+        role: "restaurant_owner",
+        onboardingCompleted: true,
+        uid: resolvedOwnerId,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    batch.update(requestRef, {
+      status: "approved",
+      ownerId: resolvedOwnerId,
+      updatedAt: serverTimestamp(),
+    });
+
+    await batch.commit();
+
+    // Send approval email notification to the restaurant owner
+    try {
+      const ownerEmail = requestData.email;
+      const restaurantName = requestData.restaurantName;
+      
+      if (ownerEmail) {
+        console.log("Sending approval email to:", ownerEmail);
+        
+        await emailjs.send(
+          EMAILJS_SERVICE_ID,
+          EMAILJS_TEMPLATE_ID,
+          {
+            to_email: ownerEmail,
+            to_name: restaurantName,
+            restaurant_name: restaurantName,
+            owner_email: ownerEmail,
+            reply_to: ownerEmail,
+            message: `Great news! Your restaurant "${restaurantName}" has been approved! 🎉
+
+Your restaurant registration has been reviewed and approved by our admin team.
+
+What you can do now:
+• Access your restaurant dashboard to manage your menu and promotions
+• Update your restaurant information and settings
+• Start receiving customer reservations and feedback
+
+Thank you for joining DineFlow! We're excited to have you on board.
+
+If you have any questions, please don't hesitate to contact our support team.`,
+            status: "Approved",
+          },
+          EMAILJS_PUBLIC_KEY
+        );
+        console.log("Approval email sent successfully to:", ownerEmail);
+      }
+    } catch (emailError) {
+      console.error("Failed to send approval email:", emailError);
+      // Don't throw - email failure shouldn't block the approval process
+    }
+  } catch (error) {
+    console.error("Error approving restaurant request:", error);
+    throw error;
+  }
 }
 
 // Reject restaurant request

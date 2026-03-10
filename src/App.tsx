@@ -1,12 +1,7 @@
-import { useState } from "react";
-import "./App.css";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-  Outlet,
-} from "react-router-dom";
+import { useState } from 'react'
+import './App.css'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 
 import { AuthProvider, useAuth } from "./features/auth/AuthContext";
 import { MenuProvider } from "./features/menu/MenuContext";
@@ -31,8 +26,7 @@ import AdminRestaurantManage from "./page/admin/restaurant-manage";
 import AdminUsers from "./page/admin/users";
 import AdminRestaurantRequests from "./page/admin/restaurant-request";
 import AdminSettings from "./page/admin/setting";
-import { SeederPage } from "./page/admin/seeder";
-import PendingApproval from "./page/PendingApproval"; // Add new import at the top
+import PendingApproval from './page/PendingApproval' // Add new import at the top
 
 function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -60,149 +54,59 @@ function AppLayout() {
   }
 
   // Only restaurant_owner, admin, and super_admin can access the dashboard
-  if (
-    role !== "restaurant_owner" &&
-    role !== "admin" &&
-    role !== "super_admin"
-  ) {
-    // NEW: Catch pending owners and route them to the pending page
-    if (role === "pending_owner") {
-      return <PendingApproval />;
+  if (role !== 'restaurant_owner' && role !== 'admin' && role !== 'super_admin') {
+    if (role === 'pending_owner') {
+      return <PendingApproval />
     }
 
-    // Only approved owners and admins can access the dashboard
-    if (role !== "restaurant_owner" && role !== "admin") {
-      return <Navigate to="/login" replace />;
-    }
-
-    return (
-      <div className="min-h-screen">
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        />
-        <main
-          className={`transition-all duration-300 ${sidebarCollapsed ? "ml-20" : "ml-80"}`}
-        >
-          <div className="">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/profile" element={<RestaurantProfile />} />
-              <Route path="/menus" element={<MenuPromotion />} />
-              <Route path="/feedback" element={<FeedbackMonitor />} />
-              <Route path="/setting" element={<Setting />} />
-              {/* Admin Routes - Protected by SuperAdminGuard */}
-              <Route
-                path="/admin/"
-                element={
-                  <SuperAdminGuard>
-                    <AdminDashboard />
-                  </SuperAdminGuard>
-                }
-              />
-              <Route
-                path="/admin/restaurants-manage"
-                element={
-                  <SuperAdminGuard>
-                    <AdminRestaurantManage />
-                  </SuperAdminGuard>
-                }
-              />
-              <Route
-                path="/admin/users"
-                element={
-                  <SuperAdminGuard>
-                    <AdminUsers />
-                  </SuperAdminGuard>
-                }
-              />
-              <Route
-                path="/admin/restaurants-request"
-                element={
-                  <SuperAdminGuard>
-                    <AdminRestaurantRequests />
-                  </SuperAdminGuard>
-                }
-              />
-              <Route
-                path="/admin/settings"
-                element={
-                  <SuperAdminGuard>
-                    <AdminSettings />
-                  </SuperAdminGuard>
-                }
-              />
-              {/* Dev-only Seeder Route */}
-              {import.meta.env.DEV && (
-                <Route
-                  path="/admin/seeder"
-                  element={
-                    <SuperAdminGuard>
-                      <SeederPage />
-                    </SuperAdminGuard>
-                  }
-                />
-              )}
-            </Routes>
-          </div>
-        </main>
-      </div>
-    );
+    return <Navigate to="/login" replace />
   }
+
+  return (
+    <div className="min-h-screen">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
+      <main
+        className={`transition-all duration-300 ${sidebarCollapsed ? "ml-20" : "ml-80"}`}
+      >
+        <div className="">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/profile" element={<RestaurantProfile />} />
+            <Route path="/menus" element={<MenuPromotion />} />
+            <Route path="/feedback" element={<FeedbackMonitor />} />
+            <Route path="/setting" element={<Setting />} />
+            {/* Admin Routes - Protected by SuperAdminGuard */}
+            <Route path="/admin/" element={<SuperAdminGuard><AdminDashboard /></SuperAdminGuard>} />
+            <Route
+              path="/admin/restaurants-manage"
+              element={<SuperAdminGuard><AdminRestaurantManage /></SuperAdminGuard>}
+            />
+            <Route path="/admin/users" element={<SuperAdminGuard><AdminUsers /></SuperAdminGuard>} />
+            <Route
+              path="/admin/restaurants-request"
+              element={<SuperAdminGuard><AdminRestaurantRequests /></SuperAdminGuard>}
+            />
+            <Route path="/admin/settings" element={<SuperAdminGuard><AdminSettings /></SuperAdminGuard>} />
+          </Routes>
+        </div>
+      </main>
+    </div>
+  );
 }
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/setup-admin" element={<SetupSuperAdmin />} />
-          {/* Onboarding Routes — single provider keeps data alive across steps */}
-          <Route
-            element={
-              <OnboardingProvider>
-                <Outlet />
-              </OnboardingProvider>
-            }
-          >
-            <Route
-              path="/onbording1"
-              element={
-                <OnboardingGuard>
-                  <Onbording1 />
-                </OnboardingGuard>
-              }
-            />
-            <Route
-              path="/onbording2"
-              element={
-                <OnboardingGuard>
-                  <Onbording2 />
-                </OnboardingGuard>
-              }
-            />
-            <Route
-              path="/onbording3"
-              element={
-                <OnboardingGuard>
-                  <Onbording3 />
-                </OnboardingGuard>
-              }
-            />
-          </Route>
-
-          {/* Protected Routes Wrapper */}
-          <Route path="/*" element={<AppLayout />} />
-        </Routes>
-      </BrowserRouter>
       <MenuProvider>
+        <Toaster position="top-center" />
         <BrowserRouter>
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/setup-admin" element={<SetupSuperAdmin />} />
             {/* Onboarding Routes — single provider keeps data alive across steps */}
             <Route
               element={
@@ -238,7 +142,7 @@ function App() {
             </Route>
 
             {/* Protected Routes Wrapper */}
-            <Route path="/*" element={<AppLayout />} />
+            <Route path="/dashboard/*" element={<AppLayout />} />
           </Routes>
         </BrowserRouter>
       </MenuProvider>

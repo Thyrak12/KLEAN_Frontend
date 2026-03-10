@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs } from "firebase/firestore";
 import { db } from "../../config/firebase";
 
 interface AdminUser {
@@ -77,11 +77,14 @@ export default function AdminUsers() {
   }, []);
 
   // Filter
-  const filtered = users.filter(
+  const nonAdminUsers = users.filter(
+    (u) => u.role !== "admin" && u.role !== "super_admin"
+  );
+
+  const filtered = nonAdminUsers.filter(
     (u) =>
       u.firstName.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase()) ||
-      u.id.toLowerCase().includes(search.toLowerCase()) ||
       u.role.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -98,8 +101,28 @@ export default function AdminUsers() {
     currentPage * PAGE_SIZE
   );
 
-  const handleRemove = (id: string) => {
-    alert(`Remove user ${id}`);
+  const handleRemove = async (id: string) => {
+    const targetUser = users.find((u) => u.id === id);
+
+    if (!targetUser) return;
+
+    const shouldRemove = confirm(
+      `Are you sure you want to remove user "${targetUser.firstName}"?`
+    );
+
+    if (!shouldRemove) return;
+
+    try {
+      await deleteDoc(doc(db, "users", id));
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      alert("User removed successfully.");
+    } catch (err) {
+      console.error("Failed to remove user:", err);
+      const firebaseError = err as { code?: string; message?: string };
+      setError(
+        `Failed to remove user${firebaseError.code ? ` (${firebaseError.code})` : ""}: ${firebaseError.message ?? "Unknown error"}`
+      );
+    }
   };
 
   // Build page numbers
@@ -182,35 +205,47 @@ export default function AdminUsers() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-amber-400 text-white">
-              <th className="py-3 px-6 text-left font-semibold">User ID</th>
+              <th className="py-3 px-6 text-left font-semibold">Order</th>
               <th className="py-3 px-6 text-left font-semibold">First Name</th>
               <th className="py-3 px-6 text-left font-semibold">Email</th>
               <th className="py-3 px-6 text-left font-semibold">Role</th>
+              <th className="py-3 px-6 text-left font-semibold">Joined Date</th>
               <th className="py-3 px-6 text-center font-semibold">Action</th>
             </tr>
           </thead>
           <tbody>
-            {paginated.map((user, index) => (
-              <tr
-                key={`${user.id}-${index}`}
-                className={`border-b border-gray-100 ${
-                  index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                } hover:bg-amber-50 transition-colors`}
-              >
-                <td className="py-3 px-6 text-gray-700">{user.id}</td>
-                <td className="py-3 px-6 text-gray-700">{user.firstName}</td>
-                <td className="py-3 px-6 text-gray-700">{user.email}</td>
-                <td className="py-3 px-6 text-gray-700 capitalize">{user.role.replaceAll("_", " ")}</td>
-                <td className="py-3 px-6 text-center">
-                  <button
-                    onClick={() => handleRemove(user.id)}
-                    className="border border-red-400 text-red-400 hover:bg-red-400 hover:text-white text-xs font-semibold px-4 py-1 rounded transition-colors"
-                  >
-                    Remove
-                  </button>
+            {paginated.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-8 px-6 text-center text-gray-500">
+                  No users found
                 </td>
               </tr>
-            ))}
+            ) : (
+              paginated.map((user, index) => (
+                <tr
+                  key={`${user.id}-${index}`}
+                  className={`border-b border-gray-100 ${
+                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                  } hover:bg-amber-50 transition-colors`}
+                >
+                  <td className="py-3 px-6 text-gray-700">{(currentPage - 1) * PAGE_SIZE + index + 1}</td>
+                  <td className="py-3 px-6 text-gray-700">{user.firstName}</td>
+                  <td className="py-3 px-6 text-gray-700">{user.email}</td>
+                  <td className="py-3 px-6 text-gray-700 capitalize">{user.role.replaceAll("_", " ")}</td>
+                  <td className="py-3 px-6 text-gray-700">
+                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "N/A"}
+                  </td>
+                  <td className="py-3 px-6 text-center">
+                    <button
+                      onClick={() => handleRemove(user.id)}
+                      className="border border-red-400 text-red-400 hover:bg-red-400 hover:text-white text-xs font-semibold px-4 py-1 rounded transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

@@ -26,7 +26,8 @@ declare global {
 
 // Make seeder functions available globally in development
 if (import.meta.env.DEV) {
-  (window as any).seedRestaurantRequests = seedRestaurantRequests
+  (window as any).seedRestaurantRequests = seedRestaurantRequests;
+  (window as any).getAvailableSeeds = getAvailableSeeds;
   
   console.log(
     '%c🌱 Restaurant Seeder Ready!',
