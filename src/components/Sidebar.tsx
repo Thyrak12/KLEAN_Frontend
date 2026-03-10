@@ -6,7 +6,6 @@ import {
   Store,
   UtensilsCrossed,
   MessageSquareMore,
-  CalendarCheck,
   PanelLeftClose,
   PanelLeftOpen,
   Users,
@@ -18,7 +17,6 @@ const menuItems = [
   { to: "/profile", label: "Restaurant Profile", icon: Store },
   { to: "/menus", label: "Menu & Promotions", icon: UtensilsCrossed },
   { to: "/feedback", label: "Feedback Monitor", icon: MessageSquareMore },
-  { to: "/reservation", label: "Reservation", icon: CalendarCheck },
   { to: "/setting", label: "Settings", icon: Store },
 ];
 

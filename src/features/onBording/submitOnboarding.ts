@@ -10,6 +10,7 @@ interface SubmitOnboardingParams {
   step3Values: Step3Data;
   setStep3: (data: Partial<Step3Data>) => void;
   navigate: NavigateFunction;
+  refreshUserData?: () => Promise<void>;
 }
 
 export async function submitOnboarding({
@@ -18,6 +19,7 @@ export async function submitOnboarding({
   step3Values,
   setStep3,
   navigate,
+  refreshUserData,
 }: SubmitOnboardingParams) {
   const user = auth.currentUser;
   if (!user) {
@@ -44,7 +46,7 @@ export async function submitOnboarding({
   const userData = {
     uid: user.uid,
     email: user.email,
-    role: "restaurant_owner",
+    role: "pending_owner", // Changed from "restaurant_owner"
     createdAt: new Date(),
     onboardingCompleted: true,
   };
@@ -55,6 +57,9 @@ export async function submitOnboarding({
     phone: step1.phone,
     contactInfo: step1.contactInfo,
     address: step1.address,
+    latitude: step1.latitude,
+    longitude: step1.longitude,
+    googleMapLink: step1.googleMapLink,
     coverImageUrl,
     category: step2.category,
     ambience: step2.ambience,
@@ -92,5 +97,15 @@ export async function submitOnboarding({
 
   console.log("User Data:", userData);
   console.log("Restaurant Data:", restaurantData);
+  console.log("Onboarding submission completed successfully");
+  
+  // Refresh user data to ensure AuthContext has latest role info
+  if (refreshUserData) {
+    console.log("Refreshing user data...");
+    await refreshUserData();
+    console.log("User data refreshed");
+  }
+  
+  console.log("Navigating to dashboard...");
   navigate("/");
 }

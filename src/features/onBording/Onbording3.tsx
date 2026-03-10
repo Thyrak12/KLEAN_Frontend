@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 // Context
 import { useOnboarding } from "./OnboardingContext";
+import { useAuth } from "../auth/AuthContext";
 import { submitOnboarding } from "./submitOnboarding";
 
 const AFFORDABILITY_OPTIONS = [
@@ -36,6 +37,7 @@ const DINER_TYPE_OPTIONS = [
 
 const Onbording3 = () => {
   const navigate = useNavigate();
+  const { refreshUserData } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   // 1. GET DATA FROM ALL STEPS
@@ -81,13 +83,13 @@ const Onbording3 = () => {
         },
         setStep3,
         navigate,
+        refreshUserData,
       });
     } catch (error) {
       console.error("Error saving onboarding data:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
       alert(`Something went wrong: ${message}`);
-    } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Only reset loading on error, success will navigate away
     }
   };
 
@@ -99,6 +101,17 @@ const Onbording3 = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 relative overflow-hidden font-sans text-gray-800">
+      
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-orange-50 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-lg shadow-xl text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+            <p className="text-lg font-semibold text-gray-700">Setting up your restaurant...</p>
+            <p className="text-sm text-gray-500 mt-2">Please wait, this may take a moment</p>
+          </div>
+        </div>
+      )}
       
       {/* --- BACKGROUND SVGS (Keeping your original design) --- */}
       <div className="absolute bottom-0 left-0 pointer-events-none z-0">
@@ -257,7 +270,7 @@ const Onbording3 = () => {
                 ${isLoading ? "opacity-50 cursor-not-allowed scale-100" : ""}
             `}
           >
-            {isLoading ? "Saving..." : "Submit"}
+            {isLoading ? "Setting up your restaurant..." : "Submit"}
           </button>
         </div>
       </div>
