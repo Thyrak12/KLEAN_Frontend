@@ -89,9 +89,16 @@ export default function AdminRestaurantRequests() {
         setRequests(requests.filter((r) => r.id !== request.id));
         closeModal();
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error approving request:", err);
-      alert("Failed to approve request");
+      const firebaseError = err as { code?: string; message?: string };
+      if (firebaseError?.code || firebaseError?.message) {
+        alert(
+          `Failed to approve request${firebaseError.code ? ` (${firebaseError.code})` : ""}: ${firebaseError.message || "Unknown error"}`
+        );
+      } else {
+        alert("Failed to approve request");
+      }
     }
   };
 

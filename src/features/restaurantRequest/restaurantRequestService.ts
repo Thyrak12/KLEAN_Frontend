@@ -6,12 +6,14 @@ import {
   getDocs,
   query,
   where,
+  limit,
   updateDoc,
   deleteDoc,
   setDoc,
   Query,
   QueryConstraint,
   serverTimestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../../config/firebase";
 import type { RestaurantRequest, RestaurantRequestStatus } from "../../types/restaurantRequest";
@@ -159,41 +161,106 @@ export async function deleteRestaurantRequest(requestId: string): Promise<void> 
 // Approve restaurant request - Creates restaurant and updates user role
 export async function approveRestaurantRequest(requestId: string): Promise<void> {
   try {
-    // 1. Get the request data
-    const request = await getRestaurantRequest(requestId);
-    if (!request) {
+    const requestRef = doc(db, COLLECTION_NAME, requestId);
+    const requestSnap = await getDoc(requestRef);
+
+    if (!requestSnap.exists()) {
       throw new Error("Restaurant request not found");
     }
 
-    // 2. Create restaurant document (clone from request, without status fields)
-    const {
-      id,
-      status,
-      rejectionReason,
-      createdAt,
-      updatedAt,
-      ...restaurantData
-    } = request;
+    const requestData = requestSnap.data() as RestaurantRequest & {
+      uid?: string;
+      userId?: string;
+    };
 
-    // Create restaurant with owner's UID as document ID
-    const restaurantDocRef = doc(db, "restaurants", request.ownerId);
-    await setDoc(restaurantDocRef, {
-      ...restaurantData,
-      createdAt: serverTimestamp(),
+    const ownerIdFromRequest = requestData.ownerId || requestData.uid || requestData.userId;
+
+    if (!ownerIdFromRequest) {
+      throw new Error("Invalid restaurant request: missing ownerId/uid/userId");
+    }
+
+    let resolvedOwnerId = ownerIdFromRequest;
+
+    // Validate owner ID against users collection. Some old requests may store non-UID IDs.
+    const ownerUserRef = doc(db, "users", resolvedOwnerId);
+    const ownerUserSnap = await getDoc(ownerUserRef);
+
+    if (!ownerUserSnap.exists()) {
+      const requestEmail = requestData.email?.trim().toLowerCase();
+      if (!requestEmail) {
+        throw new Error(
+          `Owner user not found for ownerId '${resolvedOwnerId}', and request email is missing`
+        );
+      }
+
+      const usersByEmail = await getDocs(
+        query(collection(db, "users"), where("email", "==", requestEmail), limit(1))
+      );
+
+      if (usersByEmail.empty) {
+        throw new Error(
+          `Owner user not found for ownerId '${resolvedOwnerId}' and no user matched email '${requestEmail}'`
+        );
+      }
+
+      resolvedOwnerId = usersByEmail.docs[0].id;
+    }
+
+    const restaurantRef = doc(db, "restaurants", resolvedOwnerId);
+    const userRef = doc(db, "users", resolvedOwnerId);
+
+    const batch = writeBatch(db);
+
+    const {
+      status: _status,
+      rejectionReason: _rejectionReason,
+      updatedAt: _requestUpdatedAt,
+      ...requestFieldsWithoutStatus
+    } = requestData as RestaurantRequest & {
+      uid?: string;
+      userId?: string;
+      updatedAt?: unknown;
+      rejectionReason?: string;
+    };
+
+    batch.set(
+      restaurantRef,
+      {
+        ...requestFieldsWithoutStatus,
+        uid: resolvedOwnerId,
+        ownerId: resolvedOwnerId,
+        address: requestData.location || (requestFieldsWithoutStatus as { address?: string }).address || "",
+        contactInfo:
+          requestData.email ||
+          requestData.phone ||
+          (requestFieldsWithoutStatus as { contactInfo?: string }).contactInfo ||
+          "",
+        fromRequestId: requestId,
+        approvedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    batch.set(
+      userRef,
+      {
+        role: "restaurant_owner",
+        onboardingCompleted: true,
+        uid: resolvedOwnerId,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    batch.update(requestRef, {
+      status: "approved",
+      ownerId: resolvedOwnerId,
       updatedAt: serverTimestamp(),
     });
 
-    // 3. Update user role from pending_owner to restaurant_owner
-    const userDocRef = doc(db, "users", request.ownerId);
-    await updateDoc(userDocRef, {
-      role: "restaurant_owner",
-      approvedAt: serverTimestamp(),
-    });
-
-    // 4. Update request status to approved
-    await updateRequestStatus(requestId, "approved");
-
-    console.log(`Approved restaurant: ${request.restaurantName} for owner: ${request.ownerId}`);
+    await batch.commit();
   } catch (error) {
     console.error("Error approving restaurant request:", error);
     throw error;
