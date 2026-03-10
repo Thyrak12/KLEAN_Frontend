@@ -7,7 +7,6 @@ export interface Step1Data {
   restaurantName: string;
   phone: string;
   contactInfo: string;
-  address: string;
   latitude: number | null;
   longitude: number | null;
   googleMapLink: string;
@@ -45,7 +44,6 @@ const defaultStep1: Step1Data = {
   restaurantName: "",
   phone: "",
   contactInfo: "",
-  address: "",
   latitude: null,
   longitude: null,
   googleMapLink: "",

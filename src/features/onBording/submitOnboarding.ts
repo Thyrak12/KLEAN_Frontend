@@ -70,8 +70,6 @@ export async function submitOnboarding({
     restaurantName: step1.restaurantName,
     phone: step1.phone,
     contactInfo: step1.contactInfo,
-    address: step1.address,
-    location: step1.address, // For compatibility with RestaurantRequest type
     latitude: step1.latitude,
     longitude: step1.longitude,
     googleMapLink: step1.googleMapLink,

@@ -6,7 +6,6 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './features/auth/AuthContext'
 import { MenuProvider } from './features/menu/MenuContext'
 
-import LandingPage from "./page/LandingPage";
 import Dashboard from "./page/dashboard";
 import RestaurantProfile from "./page/RestaurantProfile";
 import MenuPromotion from "./page/MenuPromotion";
@@ -58,7 +57,7 @@ function AppLayout() {
   }
 
   // Only approved owners and admins can access the dashboard
-  if (role !== 'restaurant_owner' && role !== 'admin' && role !== 'super_admin') {
+  if (role !== 'restaurant_owner' && role !== 'admin') {
     return <Navigate to="/login" replace />
   }
 
@@ -100,15 +99,30 @@ function AppLayout() {
 function App() {
   return (
     <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/setup-admin" element={<SetupSuperAdmin />} />
+          {/* Onboarding Routes — single provider keeps data alive across steps */}
+          <Route element={<OnboardingProvider><Outlet /></OnboardingProvider>}>
+            <Route path="/onbording1" element={<OnboardingGuard><Onbording1 /></OnboardingGuard>} />
+            <Route path="/onbording2" element={<OnboardingGuard><Onbording2 /></OnboardingGuard>} />
+            <Route path="/onbording3" element={<OnboardingGuard><Onbording3 /></OnboardingGuard>} />
+          </Route>
+          
+          {/* Protected Routes Wrapper */}
+          <Route path="/*" element={<AppLayout />} />
+        </Routes>
+      </BrowserRouter>
       <MenuProvider>
         <Toaster position="top-center" />
         <BrowserRouter>
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
-            <Route path="/setup-admin" element={<SetupSuperAdmin />} />
             {/* Onboarding Routes — single provider keeps data alive across steps */}
             <Route element={<OnboardingProvider><Outlet /></OnboardingProvider>}>
               <Route path="/onbording1" element={<OnboardingGuard><Onbording1 /></OnboardingGuard>} />
