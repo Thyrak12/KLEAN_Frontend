@@ -26,7 +26,6 @@ import AdminRestaurantManage from "./page/admin/restaurant-manage";
 import AdminUsers from "./page/admin/users";
 import AdminRestaurantRequests from "./page/admin/restaurant-request";
 import AdminSettings from "./page/admin/setting";
-import { SeederPage } from "./page/admin/seeder";
 import PendingApproval from './page/PendingApproval' // Add new import at the top
 
 function AppLayout() {
