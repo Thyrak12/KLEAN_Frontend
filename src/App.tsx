@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 
 import { AuthProvider, useAuth } from './features/auth/AuthContext'
 import { MenuProvider } from './features/menu/MenuContext'
@@ -88,8 +89,6 @@ function AppLayout() {
               element={<SuperAdminGuard><AdminRestaurantRequests /></SuperAdminGuard>}
             />
             <Route path="/admin/settings" element={<SuperAdminGuard><AdminSettings /></SuperAdminGuard>} />
-            {/* Dev-only Seeder Route */}
-            {import.meta.env.DEV && <Route path="/admin/seeder" element={<SuperAdminGuard><SeederPage /></SuperAdminGuard>} />}
           </Routes>
         </div>
       </main>
@@ -101,6 +100,7 @@ function App() {
   return (
     <AuthProvider>
       <MenuProvider>
+        <Toaster position="top-center" />
         <BrowserRouter>
           <Routes>
             {/* Public Routes */}
@@ -115,7 +115,7 @@ function App() {
             </Route>
             
             {/* Protected Routes Wrapper */}
-            <Route path="/*" element={<AppLayout />} />
+            <Route path="/dashboard/*" element={<AppLayout />} />
           </Routes>
         </BrowserRouter>
       </MenuProvider>
