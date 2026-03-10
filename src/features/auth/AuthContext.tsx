@@ -7,7 +7,7 @@ import type { User } from "firebase/auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type UserRole = "restaurant_owner" | "super_admin" | "pending_owner" | null;
+export type UserRole = "restaurant_owner" | "pending_owner" | "admin" | "super_admin" | null;
 
 interface AuthContextValue {
   user: User | null;
