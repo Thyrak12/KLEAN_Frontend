@@ -8,12 +8,31 @@ import * as z from "zod";
 
 // 1. Import the hook correctly
 import { useOnboarding } from "./OnboardingContext";
-import AddressAutocomplete from "../../components/AddressAutocomplete";
 
 // --- Validation Utils ---
 const validateCambodianPhone = (phone: string): boolean => {
   const cleaned = phone.replace(/[+855\s-()]/g, '');
   return /^\d{8,9}$/.test(cleaned);
+};
+
+const extractCoordinates = (url: string) => {
+  // Try pattern: @lat,lng
+  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+
+  // Try pattern: query=lat,lng
+  const queryMatch = url.match(/query=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (queryMatch) return { lat: parseFloat(queryMatch[1]), lng: parseFloat(queryMatch[2]) };
+
+  // Try pattern: ?q=lat,lng or &q=lat,lng
+  const qMatch = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (qMatch) return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
+
+  // Try pattern: !3dlat!4dlng
+  const exclamationMatch = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if (exclamationMatch) return { lat: parseFloat(exclamationMatch[1]), lng: parseFloat(exclamationMatch[2]) };
+
+  return null;
 };
 
 const onboardingSchema = z.object({
@@ -23,7 +42,6 @@ const onboardingSchema = z.object({
     .max(9, "Phone number must not exceed 9 digits")
     .refine(validateCambodianPhone, "Only 8-9 digits are allowed"),
   contactInfo: z.string().min(1, "Contact info is required"),
-  address: z.string().min(5, "Address must be at least 5 characters"),
   googleMapLink: z.string().min(1, "Google Map link is required").url("Must be a valid URL"),
 });
 
@@ -52,7 +70,6 @@ const Onbording1 = () => {
       restaurantName: step1.restaurantName,
       phone: step1.phone,
       contactInfo: step1.contactInfo,
-      address: step1.address,
       googleMapLink: step1.googleMapLink,
     }
   });
@@ -60,20 +77,7 @@ const Onbording1 = () => {
   // Watch phone & address for controlled inputs
   // eslint-disable-next-line react-hooks/incompatible-library
   const phoneValue = watch('phone');
-  const addressValue = watch('address');
   const googleMapLinkValue = watch('googleMapLink');
-
-  // Handle address selection from Google Places autocomplete
-  const handleAddressChange = (address: string, lat?: number, lng?: number) => {
-    setValue('address', address, { shouldValidate: address.length >= 5 });
-    if (lat !== undefined && lng !== undefined) {
-      setLatitude(lat);
-      setLongitude(lng);
-      const generatedLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-      setGoogleMapLink(generatedLink);
-      setValue('googleMapLink', generatedLink);
-    }
-  };
 
   // Handle phone input
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,14 +112,16 @@ const Onbording1 = () => {
     }
 
     // A. Save data to the Context (Global Store)
+    const mapUrl = data.googleMapLink ?? googleMapLink;
+    const coords = extractCoordinates(mapUrl);
+
     setStep1({
       restaurantName: data.restaurantName,
       phone: data.phone,
       contactInfo: data.contactInfo,
-      address: data.address,
-      latitude,
-      longitude,
-      googleMapLink: data.googleMapLink ?? googleMapLink,
+      latitude: coords ? coords.lat : latitude,
+      longitude: coords ? coords.lng : longitude,
+      googleMapLink: mapUrl,
       coverImage: coverImage // Saving the file object
     });
 
@@ -173,23 +179,6 @@ const Onbording1 = () => {
                     {errors.contactInfo && <span className="text-red-500 text-sm">{errors.contactInfo.message}</span>}
                 </div>
 
-                {/* Address with Google Places Autocomplete */}
-                <div className="flex flex-col gap-2">
-                    <label className="font-medium text-gray-700">Address</label>
-                    <AddressAutocomplete
-                        value={addressValue}
-                        onChange={handleAddressChange}
-                        placeholder="Search for your restaurant address..."
-                        hasError={!!errors.address}
-                    />
-                    {errors.address && <span className="text-red-500 text-sm">{errors.address.message}</span>}
-                    {latitude && longitude && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        Lat: {latitude.toFixed(6)}, Lng: {longitude.toFixed(6)}
-                      </p>
-                    )}
-                </div>
-
                 {/* Google Map Link */}
                 <div className="flex flex-col gap-2">
                     <label className="font-medium text-gray-700">Google Map Link</label>
@@ -202,8 +191,15 @@ const Onbording1 = () => {
                         value={googleMapLinkValue ?? ''}
                         {...register('googleMapLink')}
                         onChange={(e) => {
-                          setGoogleMapLink(e.target.value);
-                          setValue('googleMapLink', e.target.value, { shouldValidate: true });
+                          const val = e.target.value;
+                          setGoogleMapLink(val);
+                          setValue('googleMapLink', val, { shouldValidate: true });
+                          // Try to extract coordinates
+                          const coords = extractCoordinates(val);
+                          if (coords) {
+                            setLatitude(coords.lat);
+                            setLongitude(coords.lng);
+                          }
                         }}
                     />
                     {errors.googleMapLink && <span className="text-red-500 text-sm">{errors.googleMapLink.message}</span>}

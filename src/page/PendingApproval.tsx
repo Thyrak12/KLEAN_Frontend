@@ -14,7 +14,7 @@ export default function PendingApproval() {
   const handleRefresh = async () => {
     // When clicked, check if the admin has updated their role to "restaurant_owner" in Firestore
     await refreshUserData();
-    if (role === "restaurant_owner" || role === "admin") {
+    if (role === "restaurant_owner" || role === "super_admin") {
       navigate("/");
     }
   };
