@@ -30,7 +30,7 @@ export default function Login() {
 
       const data = userDoc.data();
       const role = data?.role as string | undefined;
-      const allowedRoles = ["restaurant_owner", "pending_owner", "admin", "super_admin"];
+      const allowedRoles = ["restaurant_owner", "pending_owner", "rejected_owner", "admin", "super_admin"];
 
       if (!role || !allowedRoles.includes(role)) {
         await auth.signOut();
@@ -43,6 +43,7 @@ export default function Login() {
         return;
       }
 
+      // rejected_owner will go to "/" and App.tsx will show RejectedOwner page
       navigate("/");
     } catch {
       setError("Invalid email or password. Please try again.");

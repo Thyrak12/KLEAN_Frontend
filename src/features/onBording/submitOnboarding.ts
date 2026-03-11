@@ -40,8 +40,8 @@ export async function submitOnboarding({
 
   setStep3(step3Values);
 
-  // 1. Upload cover image (if provided)
-  let coverImageUrl = "";
+  // 1. Upload cover image (if provided, otherwise keep existing URL)
+  let coverImageUrl = step1.coverImageUrl || ""; // Use existing URL if available
   if (step1.coverImage) {
     try {
       const imageRef = ref(storage, `restaurant_covers/${user.uid}_${Date.now()}`);
@@ -70,6 +70,8 @@ export async function submitOnboarding({
     restaurantName: step1.restaurantName,
     phone: step1.phone,
     contactInfo: step1.contactInfo,
+    address: step1.address,
+    location: step1.address, // For compatibility with RestaurantRequest type
     latitude: step1.latitude,
     longitude: step1.longitude,
     googleMapLink: step1.googleMapLink,

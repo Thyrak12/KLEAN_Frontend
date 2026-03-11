@@ -23,6 +23,9 @@ export default function AdminRestaurantRequests() {
     null
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [requestToReject, setRequestToReject] = useState<DisplayRequest | null>(null);
   const [requests, setRequests] = useState<DisplayRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,20 +106,37 @@ export default function AdminRestaurantRequests() {
   };
 
   const handleReject = async (request: DisplayRequest) => {
-    const reason = prompt("Enter rejection reason:");
-    if (reason) {
+    setRequestToReject(request);
+    setRejectionReason("");
+    setIsRejectModalOpen(true);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectionReason.trim()) {
+      alert("Please enter a rejection reason");
+      return;
+    }
+    
+    if (requestToReject?.id) {
       try {
-        if (request.id) {
-          await rejectRestaurantRequest(request.id, reason);
-          alert(`Rejected request from ${request.restaurantName}`);
-          setRequests(requests.filter((r) => r.id !== request.id));
-          closeModal();
-        }
+        await rejectRestaurantRequest(requestToReject.id, rejectionReason);
+        alert(`Rejected request from ${requestToReject.restaurantName}. Email sent to owner.`);
+        setRequests(requests.filter((r) => r.id !== requestToReject.id));
+        setIsRejectModalOpen(false);
+        setRequestToReject(null);
+        setRejectionReason("");
+        closeModal();
       } catch (err) {
         console.error("Error rejecting request:", err);
         alert("Failed to reject request");
       }
     }
+  };
+
+  const cancelReject = () => {
+    setIsRejectModalOpen(false);
+    setRequestToReject(null);
+    setRejectionReason("");
   };
 
   // Build page numbers
@@ -458,6 +478,56 @@ export default function AdminRestaurantRequests() {
               >
                 <Check size={16} />
                 Accept Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rejection Reason Modal */}
+      {isRejectModalOpen && requestToReject && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Reject Restaurant Request</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Please provide a reason for rejecting "{requestToReject.restaurantName}"
+              </p>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Rejection Reason <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Enter the reason for rejection (this will be sent to the restaurant owner via email)..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                rows={4}
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                This reason will be included in the rejection email sent to the owner.
+              </p>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button
+                onClick={cancelReject}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmReject}
+                disabled={!rejectionReason.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:bg-red-300 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
+              >
+                <X size={16} />
+                Confirm Rejection
               </button>
             </div>
           </div>

@@ -320,5 +320,77 @@ export async function rejectRestaurantRequest(
   requestId: string,
   reason: string
 ): Promise<void> {
-  return updateRequestStatus(requestId, "rejected", reason);
+  try {
+    // Get request data for email
+    const requestRef = doc(db, COLLECTION_NAME, requestId);
+    const requestSnap = await getDoc(requestRef);
+
+    if (!requestSnap.exists()) {
+      throw new Error("Restaurant request not found");
+    }
+
+    const requestData = requestSnap.data() as RestaurantRequest & {
+      uid?: string;
+      userId?: string;
+    };
+
+    const ownerId = requestData.ownerId || requestData.uid || requestData.userId;
+
+    // Update request status to rejected
+    await updateRequestStatus(requestId, "rejected", reason);
+
+    // Update user role to rejected_owner
+    if (ownerId) {
+      const userRef = doc(db, "users", ownerId);
+      await updateDoc(userRef, {
+        role: "rejected_owner",
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    // Send rejection email notification
+    try {
+      const ownerEmail = requestData.email;
+      const restaurantName = requestData.restaurantName;
+
+      if (ownerEmail) {
+        console.log("Sending rejection email to:", ownerEmail);
+
+        await emailjs.send(
+          EMAILJS_SERVICE_ID,
+          EMAILJS_TEMPLATE_ID,
+          {
+            to_email: ownerEmail,
+            to_name: restaurantName,
+            restaurant_name: restaurantName,
+            owner_email: ownerEmail,
+            reply_to: ownerEmail,
+            message: `We regret to inform you that your restaurant "${restaurantName}" registration has been reviewed and was not approved at this time.
+
+Reason for rejection:
+${reason}
+
+What you can do:
+• Review the feedback provided above
+• Make necessary changes to your registration
+• Contact our support team if you have questions
+• Re-submit your application after addressing the concerns
+
+We encourage you to address the issues mentioned and try again. Our team is here to help you succeed!
+
+If you have any questions, please contact our support team at support@dineflow.com`,
+            status: "Rejected",
+          },
+          EMAILJS_PUBLIC_KEY
+        );
+        console.log("Rejection email sent successfully to:", ownerEmail);
+      }
+    } catch (emailError) {
+      console.error("Failed to send rejection email:", emailError);
+      // Don't throw - email failure shouldn't block the rejection process
+    }
+  } catch (error) {
+    console.error("Error rejecting restaurant request:", error);
+    throw error;
+  }
 }

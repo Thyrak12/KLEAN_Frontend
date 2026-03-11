@@ -26,7 +26,8 @@ import AdminRestaurantManage from "./page/admin/restaurant-manage";
 import AdminUsers from "./page/admin/users";
 import AdminRestaurantRequests from "./page/admin/restaurant-request";
 import AdminSettings from "./page/admin/setting";
-import PendingApproval from './page/PendingApproval' // Add new import at the top
+import PendingApproval from './page/PendingApproval'
+import RejectedOwner from './page/RejectedOwner'
 
 function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -57,6 +58,10 @@ function AppLayout() {
   if (role !== 'restaurant_owner' && role !== 'admin' && role !== 'super_admin') {
     if (role === 'pending_owner') {
       return <PendingApproval />
+    }
+
+    if (role === 'rejected_owner') {
+      return <RejectedOwner />
     }
 
     return <Navigate to="/login" replace />

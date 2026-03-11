@@ -1,11 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { ChangeEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Image as ImageIcon } from "lucide-react"; 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useJsApiLoader, Autocomplete } from "@react-google-maps/api"; 
+import { useAuth } from "../auth/AuthContext"; 
 
 type Library = "core" | "maps" | "places" | "geocoding" | "routes" | "marker" | "geometry" | "elevation" | "streetView" | "journeySharing" | "drawing" | "visualization";
 
@@ -63,13 +64,18 @@ type OnboardingData = z.infer<typeof onboardingSchema>;
 
 const Onbording1 = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const isResubmit = searchParams.get('resubmit') === 'true';
   
   // 2. Get the global state and setter
-  const { step1, setStep1 } = useOnboarding();
+  const { step1, setStep1, loadPreviousRequest, isResubmission } = useOnboarding();
 
   // Local state for image preview (initialize with context image if exists)
   const [coverImage, setCoverImage] = useState<File | null>(step1.coverImage);
   const [imageError, setImageError] = useState("");
+  const [existingImageUrl, setExistingImageUrl] = useState<string>(step1.coverImageUrl || "");
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Local state for coordinates from Google Places
   const [latitude, setLatitude] = useState<number | null>(step1.latitude);
@@ -78,15 +84,48 @@ const Onbording1 = () => {
 
   // 3. Initialize Form with Default Values from Context
   // This ensures data persists when clicking "Back" from Step 2
-  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<OnboardingData>({
+  const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useForm<OnboardingData>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       restaurantName: step1.restaurantName,
       phone: step1.phone,
       contactInfo: step1.contactInfo,
+      address: step1.address || "",
       googleMapLink: step1.googleMapLink,
     }
   });
+
+  // Load previous data if this is a resubmission
+  useEffect(() => {
+    const loadData = async () => {
+      if (isResubmit && user && !dataLoaded && !isResubmission) {
+        const loaded = await loadPreviousRequest(user.uid);
+        if (loaded) {
+          setDataLoaded(true);
+        }
+      }
+    };
+    loadData();
+  }, [isResubmit, user, dataLoaded, isResubmission, loadPreviousRequest]);
+
+  // Reset form when step1 data changes (after loading previous request)
+  useEffect(() => {
+    if (step1.restaurantName || isResubmission) {
+      reset({
+        restaurantName: step1.restaurantName,
+        phone: step1.phone,
+        contactInfo: step1.contactInfo,
+        address: step1.address || "",
+        googleMapLink: step1.googleMapLink,
+      });
+      setLatitude(step1.latitude);
+      setLongitude(step1.longitude);
+      setGoogleMapLink(step1.googleMapLink);
+      if (step1.coverImageUrl) {
+        setExistingImageUrl(step1.coverImageUrl);
+      }
+    }
+  }, [step1, reset, isResubmission]);
 
   // Watch phone & address for controlled inputs
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -120,7 +159,8 @@ const Onbording1 = () => {
 
   // 4. Handle Submit - SAVE TO CONTEXT (Not Firebase yet)
   const onSubmit = (data: OnboardingData) => {
-    if (!coverImage) {
+    // Allow existing image URL for resubmissions
+    if (!coverImage && !existingImageUrl) {
       setImageError("Cover image is required");
       return;
     }
@@ -133,10 +173,12 @@ const Onbording1 = () => {
       restaurantName: data.restaurantName,
       phone: data.phone,
       contactInfo: data.contactInfo,
+      address: data.address,
       latitude: coords ? coords.lat : latitude,
       longitude: coords ? coords.lng : longitude,
       googleMapLink: mapUrl,
-      coverImage: coverImage // Saving the file object
+      coverImage: coverImage, // Saving the file object (may be null if using existing)
+      coverImageUrl: existingImageUrl, // Keep existing URL if no new upload
     });
 
     // B. Navigate to next step
@@ -290,6 +332,13 @@ const Onbording1 = () => {
                         <div className="w-full h-full relative">
                             {/* Note: URL.createObjectURL is needed to preview a File object */}
                             <img src={URL.createObjectURL(coverImage)} alt="Cover Preview" className="w-full h-full object-cover rounded-2xl" />
+                        </div>
+                    ) : existingImageUrl ? (
+                        <div className="w-full h-full relative">
+                            <img src={existingImageUrl} alt="Existing Cover" className="w-full h-full object-cover rounded-2xl" />
+                            <div className="absolute bottom-2 left-2 bg-amber-500 text-white text-xs px-2 py-1 rounded">
+                              Click to change
+                            </div>
                         </div>
                     ) : (
                         <div className="flex flex-col items-center gap-4 text-gray-800">

@@ -78,8 +78,15 @@ service cloud.firestore {
         isSuperAdmin()
       );
 
-      // Super admin approves/rejects
-      allow update, delete: if isSuperAdmin();
+      // Owner can update their own request (for resubmission); super admin can update any
+      allow update: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.uid == request.auth.uid ||
+        isSuperAdmin()
+      );
+
+      // Only super admin can delete
+      allow delete: if isSuperAdmin();
     }
 
     match /chats/{uid}/messages/{messageId} {
