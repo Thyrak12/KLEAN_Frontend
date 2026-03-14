@@ -49,6 +49,9 @@ const extractCoordinates = (url: string) => {
   return null;
 };
 
+// Time regex for HH:MM 24-hour
+const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
 const onboardingSchema = z.object({
   restaurantName: z.string().min(1, "Restaurant name is required"),
   phone: z.string()
@@ -58,6 +61,9 @@ const onboardingSchema = z.object({
   contactInfo: z.string().min(1, "Contact info is required"),
   address: z.string().min(1, "Address is required"),
   googleMapLink: z.string().min(1, "Google Map link is required").url("Must be a valid URL"),
+  description: z.string().optional(),
+  openHour: z.string().optional().refine((v) => !v || timeRegex.test(v), { message: "Open hour must be HH:MM" }),
+  closeHour: z.string().optional().refine((v) => !v || timeRegex.test(v), { message: "Close hour must be HH:MM" }),
 });
 
 type OnboardingData = z.infer<typeof onboardingSchema>;
@@ -92,6 +98,9 @@ const Onbording1 = () => {
       contactInfo: step1.contactInfo,
       address: step1.address || "",
       googleMapLink: step1.googleMapLink,
+      description: (step1 as any).description || "",
+      openHour: (step1 as any).openHour || "",
+      closeHour: (step1 as any).closeHour || "",
     }
   });
 
@@ -117,6 +126,9 @@ const Onbording1 = () => {
         contactInfo: step1.contactInfo,
         address: step1.address || "",
         googleMapLink: step1.googleMapLink,
+        description: (step1 as any).description || "",
+        openHour: (step1 as any).openHour || "",
+        closeHour: (step1 as any).closeHour || "",
       });
       setLatitude(step1.latitude);
       setLongitude(step1.longitude);
@@ -174,6 +186,9 @@ const Onbording1 = () => {
       phone: data.phone,
       contactInfo: data.contactInfo,
       address: data.address,
+      description: (data as any).description || "",
+      openHour: (data as any).openHour || "",
+      closeHour: (data as any).closeHour || "",
       latitude: coords ? coords.lat : latitude,
       longitude: coords ? coords.lng : longitude,
       googleMapLink: mapUrl,
@@ -222,7 +237,7 @@ const Onbording1 = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 relative overflow-hidden font-sans text-gray-800">
-      <form onSubmit={handleSubmit(onSubmit)} className="relative z-10 px-8 py-8 max-w-7xl mx-auto h-screen flex flex-col">
+      <form onSubmit={handleSubmit(onSubmit)} className="relative z-10 px-8 py-8 max-w-7xl mx-auto max-h-screen overflow-auto flex flex-col">
         <div className="text-3xl font-bold mb-8">Restaurant Registration (Step 1/3)</div>
         <div className="bg-white rounded-[3rem] shadow-xl p-12 flex-1 flex flex-col md:flex-row gap-16 items-start">
             
@@ -267,6 +282,15 @@ const Onbording1 = () => {
                         {...register("contactInfo")}
                     />
                     {errors.contactInfo && <span className="text-red-500 text-sm">{errors.contactInfo.message}</span>}
+                </div>
+                {/* Description */}
+                <div className="flex flex-col gap-2">
+                  <label className="font-medium text-gray-700">Restaurant Description (optional)</label>
+                  <textarea
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400 h-28"
+                    placeholder="Brief description about your restaurant, cuisine, vibe..."
+                    {...register("description")}
+                  />
                 </div>
                 {/* Address */}
                 <div className="flex flex-col gap-2">
@@ -320,6 +344,32 @@ const Onbording1 = () => {
                         }}
                     />
                     {errors.googleMapLink && <span className="text-red-500 text-sm">{errors.googleMapLink.message}</span>}
+                </div>
+
+                {/* Open / Close Hours */}
+                <div className="flex gap-3 items-center">
+                  <div className="flex-1">
+                    <label className="font-medium text-gray-700">Open Time</label>
+                    <input
+                      type="time"
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                      {...register('openHour')}
+                    />
+                    {errors.openHour && (
+                      <div className="text-red-500 text-sm">{errors.openHour.message}</div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <label className="font-medium text-gray-700">Close Time</label>
+                    <input
+                      type="time"
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                      {...register('closeHour')}
+                    />
+                    {errors.closeHour && (
+                      <div className="text-red-500 text-sm">{errors.closeHour.message}</div>
+                    )}
+                  </div>
                 </div>
 
             </div>

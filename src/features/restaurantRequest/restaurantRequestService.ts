@@ -167,7 +167,7 @@ export async function deleteRestaurantRequest(requestId: string): Promise<void> 
 }
 
 // Approve restaurant request - Creates restaurant and updates user role
-export async function approveRestaurantRequest(requestId: string): Promise<void> {
+export async function approveRestaurantRequest(requestId: string): Promise<string> {
   try {
     const requestRef = doc(db, COLLECTION_NAME, requestId);
     const requestSnap = await getDoc(requestRef);
@@ -231,6 +231,15 @@ export async function approveRestaurantRequest(requestId: string): Promise<void>
       rejectionReason?: string;
     };
 
+    // Ensure opening hours fields are explicitly set on the restaurant document
+    const openHourValue =
+      (requestFieldsWithoutStatus as any).openHour || (requestData as any).openHour || "";
+    const closeHourValue =
+      (requestFieldsWithoutStatus as any).closeHour || (requestData as any).closeHour || "";
+    const combinedOpeningHours =
+      (requestData as any).openingHours ||
+      (openHourValue && closeHourValue ? `${openHourValue} - ${closeHourValue}` : "");
+
     batch.set(
       restaurantRef,
       {
@@ -243,6 +252,9 @@ export async function approveRestaurantRequest(requestId: string): Promise<void>
           requestData.phone ||
           (requestFieldsWithoutStatus as { contactInfo?: string }).contactInfo ||
           "",
+        openHour: openHourValue,
+        closeHour: closeHourValue,
+        openingHours: combinedOpeningHours,
         fromRequestId: requestId,
         approvedAt: serverTimestamp(),
         createdAt: serverTimestamp(),
@@ -269,6 +281,9 @@ export async function approveRestaurantRequest(requestId: string): Promise<void>
     });
 
     await batch.commit();
+
+    // Return the resolved owner id so callers can navigate or show links
+    return resolvedOwnerId;
 
     // Send approval email notification to the restaurant owner
     try {

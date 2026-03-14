@@ -1,5 +1,20 @@
 import { useState, useEffect } from "react";
-import { Search, ChevronLeft, ChevronRight, Check, X, Eye, MapPin, Clock, Phone, Mail, User, Utensils, FileText } from "lucide-react";
+import {
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  X,
+  Eye,
+  MapPin,
+  Clock,
+  Phone,
+  Mail,
+  User,
+  Utensils,
+  FileText,
+} from "lucide-react";
+import toast from "react-hot-toast";
 import type { RestaurantRequest } from "../../types/restaurantRequest";
 import {
   getRequestsByStatus,
@@ -20,12 +35,14 @@ export default function AdminRestaurantRequests() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("Newest");
   const [selectedRequest, setSelectedRequest] = useState<DisplayRequest | null>(
-    null
+    null,
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
-  const [requestToReject, setRequestToReject] = useState<DisplayRequest | null>(null);
+  const [requestToReject, setRequestToReject] = useState<DisplayRequest | null>(
+    null,
+  );
   const [requests, setRequests] = useState<DisplayRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,42 +83,37 @@ export default function AdminRestaurantRequests() {
       r.email?.toLowerCase().includes(search.toLowerCase()) ||
       r.phone?.includes(search) ||
       r.location.toLowerCase().includes(search.toLowerCase()) ||
-      r.cuisineType?.toLowerCase().includes(search.toLowerCase())
+      r.cuisineType?.toLowerCase().includes(search.toLowerCase()),
   );
 
   // Sort requests
   const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === "Newest")
-      return (b.createdAt || 0) - (a.createdAt || 0);
-    if (sortBy === "Oldest")
-      return (a.createdAt || 0) - (b.createdAt || 0);
+    if (sortBy === "Newest") return (b.createdAt || 0) - (a.createdAt || 0);
+    if (sortBy === "Oldest") return (a.createdAt || 0) - (b.createdAt || 0);
     return a.restaurantName.localeCompare(b.restaurantName);
   });
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const paginated = sorted.slice(
     (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+    currentPage * PAGE_SIZE,
   );
 
   const handleAccept = async (request: DisplayRequest) => {
     try {
       if (request.id) {
-        await approveRestaurantRequest(request.id);
-        alert(`Approved request from ${request.restaurantName}`);
+        const ownerId = await approveRestaurantRequest(request.id);
+        // Friendly toast message (no absolute localhost URLs)
+        toast.success(`Approved: ${request.restaurantName}. Restaurant created.`);
+        console.log(`Restaurant created for ownerId: ${ownerId}`);
         setRequests(requests.filter((r) => r.id !== request.id));
         closeModal();
       }
     } catch (err: unknown) {
       console.error("Error approving request:", err);
       const firebaseError = err as { code?: string; message?: string };
-      if (firebaseError?.code || firebaseError?.message) {
-        alert(
-          `Failed to approve request${firebaseError.code ? ` (${firebaseError.code})` : ""}: ${firebaseError.message || "Unknown error"}`
-        );
-      } else {
-        alert("Failed to approve request");
-      }
+      const msg = firebaseError?.message || "Failed to approve request";
+      toast.error(msg);
     }
   };
 
@@ -116,11 +128,13 @@ export default function AdminRestaurantRequests() {
       alert("Please enter a rejection reason");
       return;
     }
-    
+
     if (requestToReject?.id) {
       try {
         await rejectRestaurantRequest(requestToReject.id, rejectionReason);
-        alert(`Rejected request from ${requestToReject.restaurantName}. Email sent to owner.`);
+        alert(
+          `Rejected request from ${requestToReject.restaurantName}. Email sent to owner.`,
+        );
         setRequests(requests.filter((r) => r.id !== requestToReject.id));
         setIsRejectModalOpen(false);
         setRequestToReject(null);
@@ -228,14 +242,30 @@ export default function AdminRestaurantRequests() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-amber-400 text-white">
-              <th className="py-3 px-4 text-left font-semibold text-xs">Order</th>
-              <th className="py-3 px-4 text-left font-semibold text-xs">Restaurant Name</th>
-              <th className="py-3 px-4 text-left font-semibold text-xs">Email</th>
-              <th className="py-3 px-4 text-left font-semibold text-xs">Phone Number</th>
-              <th className="py-3 px-4 text-left font-semibold text-xs">Cuisine</th>
-              <th className="py-3 px-4 text-left font-semibold text-xs">Location</th>
-              <th className="py-3 px-4 text-left font-semibold text-xs">Submitted Date</th>
-              <th className="py-3 px-4 text-center font-semibold text-xs">Action</th>
+              <th className="py-3 px-4 text-left font-semibold text-xs">
+                Order
+              </th>
+              <th className="py-3 px-4 text-left font-semibold text-xs">
+                Restaurant Name
+              </th>
+              <th className="py-3 px-4 text-left font-semibold text-xs">
+                Email
+              </th>
+              <th className="py-3 px-4 text-left font-semibold text-xs">
+                Phone Number
+              </th>
+              <th className="py-3 px-4 text-left font-semibold text-xs">
+                Cuisine
+              </th>
+              <th className="py-3 px-4 text-left font-semibold text-xs">
+                Location
+              </th>
+              <th className="py-3 px-4 text-left font-semibold text-xs">
+                Submitted Date
+              </th>
+              <th className="py-3 px-4 text-center font-semibold text-xs">
+                Action
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -253,14 +283,28 @@ export default function AdminRestaurantRequests() {
                     index % 2 === 0 ? "bg-white" : "bg-gray-50"
                   } hover:bg-amber-50 transition-colors`}
                 >
-                  <td className="py-2.5 px-4 text-gray-700 text-xs">{(currentPage - 1) * PAGE_SIZE + index + 1}</td>
-                  <td className="py-2.5 px-4 text-gray-700 text-xs">{request.restaurantName}</td>
-                  <td className="py-2.5 px-4 text-gray-700 text-xs">{request.email || "-"}</td>
-                  <td className="py-2.5 px-4 text-gray-700 text-xs">{request.phone || "-"}</td>
-                  <td className="py-2.5 px-4 text-gray-700 text-xs">{request.cuisineType || "-"}</td>
-                  <td className="py-2.5 px-4 text-gray-700 text-xs">{request.location || "-"}</td>
                   <td className="py-2.5 px-4 text-gray-700 text-xs">
-                    {request.createdAt ? new Date(request.createdAt).toLocaleDateString() : "-"}
+                    {(currentPage - 1) * PAGE_SIZE + index + 1}
+                  </td>
+                  <td className="py-2.5 px-4 text-gray-700 text-xs">
+                    {request.restaurantName}
+                  </td>
+                  <td className="py-2.5 px-4 text-gray-700 text-xs">
+                    {request.email || "-"}
+                  </td>
+                  <td className="py-2.5 px-4 text-gray-700 text-xs">
+                    {request.phone || "-"}
+                  </td>
+                  <td className="py-2.5 px-4 text-gray-700 text-xs">
+                    {request.cuisineType || "-"}
+                  </td>
+                  <td className="py-2.5 px-4 text-gray-700 text-xs">
+                    {request.location || "-"}
+                  </td>
+                  <td className="py-2.5 px-4 text-gray-700 text-xs">
+                    {request.createdAt
+                      ? new Date(request.createdAt).toLocaleDateString()
+                      : "-"}
                   </td>
                   <td className="py-2.5 px-4 text-center">
                     <button
@@ -306,7 +350,7 @@ export default function AdminRestaurantRequests() {
             >
               {page}
             </button>
-          )
+          ),
         )}
 
         <button
@@ -325,7 +369,9 @@ export default function AdminRestaurantRequests() {
             {/* Modal Header */}
             <div className="bg-amber-400 text-white px-6 py-4 rounded-t-2xl">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold">Restaurant Request Details</h2>
+                <h2 className="text-xl font-bold">
+                  Restaurant Request Details
+                </h2>
                 <button
                   onClick={closeModal}
                   className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-amber-500 transition-colors"
@@ -333,7 +379,9 @@ export default function AdminRestaurantRequests() {
                   <X size={20} />
                 </button>
               </div>
-              <p className="text-amber-100 text-sm mt-1">Review the details before accepting or rejecting</p>
+              <p className="text-amber-100 text-sm mt-1">
+                Review the details before accepting or rejecting
+              </p>
             </div>
 
             {/* Modal Body */}
@@ -359,26 +407,36 @@ export default function AdminRestaurantRequests() {
                   <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
                     <User size={14} /> Owner ID
                   </label>
-                  <p className="text-sm text-gray-900 font-medium break-all">{selectedRequest.ownerId || "Not provided"}</p>
+                  <p className="text-sm text-gray-900 font-medium break-all">
+                    {selectedRequest.ownerId || "Not provided"}
+                  </p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-500">Request ID</label>
-                  <p className="text-sm text-gray-900 font-medium break-all">{selectedRequest.id || "Not available"}</p>
+                  <label className="text-xs font-medium text-gray-500">
+                    Request ID
+                  </label>
+                  <p className="text-sm text-gray-900 font-medium break-all">
+                    {selectedRequest.id || "Not available"}
+                  </p>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
                     <Mail size={14} /> Email
                   </label>
-                  <p className="text-sm text-gray-900 break-all">{selectedRequest.email || "Not provided"}</p>
+                  <p className="text-sm text-gray-900 break-all">
+                    {selectedRequest.email || "Not provided"}
+                  </p>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
                     <Phone size={14} /> Phone Number
                   </label>
-                  <p className="text-sm text-gray-900">{selectedRequest.phone || "Not provided"}</p>
+                  <p className="text-sm text-gray-900">
+                    {selectedRequest.phone || "Not provided"}
+                  </p>
                 </div>
               </div>
 
@@ -388,7 +446,9 @@ export default function AdminRestaurantRequests() {
                   <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
                     <MapPin size={14} /> Location
                   </label>
-                  <p className="text-sm text-gray-900">{selectedRequest.location || "Location not provided"}</p>
+                  <p className="text-sm text-gray-900">
+                    {selectedRequest.location || "Location not provided"}
+                  </p>
                 </div>
               </div>
 
@@ -399,7 +459,9 @@ export default function AdminRestaurantRequests() {
                     <FileText size={14} /> Description
                   </label>
                   <p className="text-sm text-gray-700 leading-relaxed">
-                    {selectedRequest.description || "Description not provided by applicant."}
+                    {(selectedRequest.description && selectedRequest.description.trim()) ||
+                      (selectedRequest as any).desc ||
+                      "Description not provided by applicant."}
                   </p>
                 </div>
               </div>
@@ -410,27 +472,40 @@ export default function AdminRestaurantRequests() {
                   <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
                     <Clock size={14} /> Opening Hours
                   </label>
-                  <p className="text-sm text-gray-900">{selectedRequest.openingHours || "Not provided"}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-500">Seating Capacity</label>
                   <p className="text-sm text-gray-900">
-                    {selectedRequest.seatingCapacity ? `${selectedRequest.seatingCapacity} seats` : "Not provided"}
+                    {((selectedRequest as any).openingHours && (selectedRequest as any).openingHours) ||
+                      (((selectedRequest as any).openHour || "") + ((selectedRequest as any).closeHour ? ` - ${ (selectedRequest as any).closeHour}` : "")) ||
+                      "Not provided"}
                   </p>
                 </div>
+                {/* 
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-500">
+                    Seating Capacity
+                  </label>
+                  <p className="text-sm text-gray-900">
+                    {selectedRequest.seatingCapacity
+                      ? `${selectedRequest.seatingCapacity} seats`
+                      : "Not provided"}
+                  </p>
+                </div> */}
 
                 <div className="space-y-1 col-span-2">
-                  <label className="text-xs font-medium text-gray-500">Submitted Date</label>
+                  <label className="text-xs font-medium text-gray-500">
+                    Submitted Date
+                  </label>
                   <p className="text-sm text-gray-900">
                     {selectedRequest.createdAt
-                      ? new Date(selectedRequest.createdAt).toLocaleString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
+                      ? new Date(selectedRequest.createdAt).toLocaleString(
+                          "en-US",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )
                       : "Not available"}
                   </p>
                 </div>
@@ -438,8 +513,11 @@ export default function AdminRestaurantRequests() {
 
               {/* Documents Section */}
               <div className="border-t pt-4">
-                <label className="text-xs font-medium text-gray-500 mb-2 block">Submitted Documents</label>
-                {selectedRequest.documents && selectedRequest.documents.length > 0 ? (
+                <label className="text-xs font-medium text-gray-500 mb-2 block">
+                  Submitted Documents
+                </label>
+                {selectedRequest.documents &&
+                selectedRequest.documents.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {selectedRequest.documents.map((doc, index) => (
                       <span
@@ -452,7 +530,9 @@ export default function AdminRestaurantRequests() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-red-600">No supporting documents submitted.</p>
+                  <p className="text-sm text-red-600">
+                    No supporting documents submitted.
+                  </p>
                 )}
               </div>
             </div>
@@ -486,13 +566,16 @@ export default function AdminRestaurantRequests() {
 
       {/* Rejection Reason Modal */}
       {isRejectModalOpen && requestToReject && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Reject Restaurant Request</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Reject Restaurant Request
+              </h3>
               <p className="text-sm text-gray-500 mt-1">
-                Please provide a reason for rejecting "{requestToReject.restaurantName}"
+                Please provide a reason for rejecting "
+                {requestToReject.restaurantName}"
               </p>
             </div>
 
@@ -509,7 +592,8 @@ export default function AdminRestaurantRequests() {
                 rows={4}
               />
               <p className="text-xs text-gray-500 mt-2">
-                This reason will be included in the rejection email sent to the owner.
+                This reason will be included in the rejection email sent to the
+                owner.
               </p>
             </div>
 

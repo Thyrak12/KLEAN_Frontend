@@ -75,6 +75,11 @@ export async function submitOnboarding({
     latitude: step1.latitude,
     longitude: step1.longitude,
     googleMapLink: step1.googleMapLink,
+    description: step1.description,
+    openHour: step1.openHour,
+    closeHour: step1.closeHour,
+    // also store openingHours for admin compatibility (combined HH:MM-HH:MM)
+    openingHours: step1.openHour && step1.closeHour ? `${step1.openHour} - ${step1.closeHour}` : step1.openHour || step1.closeHour || "",
     coverImageUrl,
     category: step2.category,
     cuisineType: step2.category, // For compatibility

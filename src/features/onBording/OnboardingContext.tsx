@@ -13,6 +13,9 @@ export interface Step1Data {
   latitude: number | null;
   longitude: number | null;
   googleMapLink: string;
+  description: string;
+  openHour: string;
+  closeHour: string;
   coverImage: File | null;
   coverImageUrl?: string; // For pre-loading existing image URL
 }
@@ -52,6 +55,9 @@ const defaultStep1: Step1Data = {
   latitude: null,
   longitude: null,
   googleMapLink: "",
+  description: "",
+  openHour: "",
+  closeHour: "",
   coverImage: null,
   coverImageUrl: "",
 };
@@ -130,6 +136,16 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       const data = requestDoc.data();
       
       // Load Step 1 data
+      // Support older records that stored `openingHours` as a combined string like "08:00-17:00"
+      const openingHoursRaw = data.openingHours || "";
+      let openFrom = data.openHour || "";
+      let openTo = data.closeHour || "";
+      if (!openFrom && openingHoursRaw) {
+        const parts = String(openingHoursRaw).split("-");
+        openFrom = parts[0] ? parts[0].trim() : "";
+        openTo = parts[1] ? parts[1].trim() : openTo;
+      }
+
       setStep1State({
         restaurantName: data.restaurantName || "",
         phone: data.phone || "",
@@ -138,6 +154,9 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         latitude: data.latitude || null,
         longitude: data.longitude || null,
         googleMapLink: data.googleMapLink || "",
+        description: data.description || "",
+        openHour: openFrom || "",
+        closeHour: openTo || "",
         coverImage: null,
         coverImageUrl: data.coverImageUrl || "",
       });

@@ -5,6 +5,15 @@ export interface RestaurantRequest {
   restaurantName: string;
   description: string;
   location: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  googleMapLink?: string;
+  contactInfo?: string;
+  coverImageUrl?: string;
+  openHour?: string;
+  closeHour?: string;
+  openingHours?: string;
   status: "pending" | "approved" | "rejected";
   createdAt: number; // timestamp in milliseconds
   updatedAt?: number; // timestamp in milliseconds
