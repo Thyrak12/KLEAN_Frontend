@@ -13,6 +13,7 @@ import FeedbackMonitor from "./page/FeedbackMonitor";
 import Sidebar from "./components/Sidebar";
 import Login from "./page/Login";
 import SignUp from "./page/SignUp";
+import LandingPage from "./page/LandingPage";
 import Setting from "./page/setting";
 import Onbording1 from "./features/onBording/Onbording1";
 import Onbording2 from "./features/onBording/Onbording2";
@@ -78,7 +79,7 @@ function AppLayout() {
       >
         <div className="">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<RestaurantProfile />} />
             <Route path="/menus" element={<MenuPromotion />} />
             <Route path="/feedback" element={<FeedbackMonitor />} />
@@ -109,6 +110,8 @@ function App() {
         <BrowserRouter>
           <Routes>
             {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/landing" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/setup-admin" element={<SetupSuperAdmin />} />

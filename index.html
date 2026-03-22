@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      During local development Firestore (and some tooling) may use string
+      evaluation internally. Your browser's Content-Security-Policy can block
+      this (error referencing BloomFilter / installHook). To allow local dev
+      debugging only, add 'unsafe-eval' to script-src below.
+
+      WARNING: Enabling 'unsafe-eval' decreases security and MUST NOT be used
+      in production headers. Remove this meta before deploying.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' 'unsafe-inline' https:; object-src 'none';" />
     <title>frontend</title>
   </head>
   <body>

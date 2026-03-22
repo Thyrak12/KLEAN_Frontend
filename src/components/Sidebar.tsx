@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 const menuItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/profile", label: "Restaurant Profile", icon: Store },
   { to: "/menus", label: "Menu & Promotions", icon: UtensilsCrossed },
   { to: "/feedback", label: "Feedback Monitor", icon: MessageSquareMore },
@@ -86,7 +86,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <NavLink
               key={to}
               to={to}
-              end={to === "/" || to === "/admin"}
+              end={to === "/dashboard" || to === "/admin"}
               title={collapsed ? label : undefined}
               className={({ isActive }) =>
                 [

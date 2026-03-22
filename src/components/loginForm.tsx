@@ -43,10 +43,24 @@ export default function Login() {
         return;
       }
 
-      // rejected_owner will go to "/" and App.tsx will show RejectedOwner page
+      if (role === "restaurant_owner") {
+        // go to the protected dashboard route
+        navigate("/dashboard");
+        return;
+      }
+
+      // pending_owner or rejected_owner should go to root where App.tsx shows appropriate pages
       navigate("/");
     } catch {
-      setError("Invalid email or password. Please try again.");
+        // Surface actual error message for easier debugging (e.g. Firestore/CSP issues)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const errAny: any = (arguments && arguments[0]) || undefined;
+        if (errAny && errAny.message) {
+          console.error(errAny);
+          setError(errAny.message);
+        } else {
+          setError("Invalid email or password. Please try again.");
+        }
     } finally {
       setLoading(false);
     }
