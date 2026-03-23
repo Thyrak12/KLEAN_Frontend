@@ -52,6 +52,7 @@ export interface Promotion {
   restaurant_id: string;
   title: string;
   description: string;
+  image?: string;
   start_date: Date;
   end_date: Date;
   status: PromotionStatus;
@@ -67,6 +68,7 @@ export type PromotionStatus = "active" | "inactive" | "scheduled" | "expired";
 export interface CreatePromotionInput {
   title: string;
   description: string;
+  image?: string;
   start_date: Date;
   end_date: Date;
   status: PromotionStatus;

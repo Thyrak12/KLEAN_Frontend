@@ -7,6 +7,7 @@ interface PromotionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreatePromotionInput) => Promise<void>;
+  uploadImage: (file: File) => Promise<string>;
   promotion?: Promotion | null;
   menuItems: MenuItem[];
   mode: "create" | "edit";
@@ -25,6 +26,7 @@ export default function PromotionModal({
   isOpen,
   onClose,
   onSubmit,
+  uploadImage,
   promotion,
   menuItems,
   mode,
@@ -38,7 +40,10 @@ export default function PromotionModal({
     promotion_type: "restaurant",
     menu_item_id: "",
     discount_percentage: 20,
+    image: "",
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string>("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -53,7 +58,10 @@ export default function PromotionModal({
         promotion_type: promotion.promotion_type || "restaurant",
         menu_item_id: promotion.menu_item_id || "",
         discount_percentage: promotion.discount_percentage || 20,
+        image: promotion.image || "",
       });
+      setPreviewImage(promotion.image || "");
+      setImageFile(null);
     } else {
       setFormData({
         title: "",
@@ -64,7 +72,10 @@ export default function PromotionModal({
         promotion_type: "restaurant",
         menu_item_id: "",
         discount_percentage: 20,
+        image: "",
       });
+      setPreviewImage("");
+      setImageFile(null);
     }
     setErrors({});
   }, [promotion, mode, isOpen]);
@@ -82,6 +93,10 @@ export default function PromotionModal({
 
     if (!formData.description.trim()) {
       newErrors.description = "Description is required";
+    }
+
+    if (formData.promotion_type === "restaurant" && !imageFile && !formData.image) {
+      newErrors.image = "Promotion image is required for restaurant promotion";
     }
 
     if (formData.promotion_type === "menu_discount" && !formData.menu_item_id) {
@@ -108,9 +123,15 @@ export default function PromotionModal({
 
     setIsSubmitting(true);
     try {
+      let imageUrl = formData.image;
+      if (formData.promotion_type === "restaurant" && imageFile) {
+        imageUrl = await uploadImage(imageFile);
+      }
+
       // Clean up data based on promotion type
       const submitData: CreatePromotionInput = {
         ...formData,
+        image: formData.promotion_type === "restaurant" ? imageUrl : undefined,
         menu_item_id: formData.promotion_type === "menu_discount" ? formData.menu_item_id : undefined,
         discount_percentage: formData.promotion_type === "menu_discount" ? formData.discount_percentage : undefined,
       };
@@ -149,7 +170,27 @@ export default function PromotionModal({
       promotion_type: type,
       menu_item_id: type === "restaurant" ? "" : prev.menu_item_id,
     }));
-    setErrors((prev) => ({ ...prev, menu_item_id: "" }));
+    setErrors((prev) => ({ ...prev, menu_item_id: "", image: "" }));
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setErrors((prev) => ({ ...prev, image: "Please select a valid image file" }));
+      return;
+    }
+
+    setImageFile(file);
+    setPreviewImage(URL.createObjectURL(file));
+    setErrors((prev) => ({ ...prev, image: "" }));
+  };
+
+  const clearSelectedImage = () => {
+    setImageFile(null);
+    setPreviewImage("");
+    setFormData((prev) => ({ ...prev, image: "" }));
   };
 
   const selectedMenuItem = menuItems.find((item) => item.id === formData.menu_item_id);
@@ -299,6 +340,53 @@ export default function PromotionModal({
               <p className="text-red-500 text-sm mt-1">{errors.description}</p>
             )}
           </div>
+
+          {/* Restaurant Promotion Image (Required) */}
+          {formData.promotion_type === "restaurant" && (
+            <div>
+              <label className="block text-gray-700 font-medium mb-2">
+                Promotion Image <span className="text-red-500">*</span>
+              </label>
+
+              <div className="flex items-start gap-4">
+                <div className="w-28 h-28 rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center flex-shrink-0">
+                  {previewImage || formData.image ? (
+                    <img
+                      src={previewImage || formData.image}
+                      alt="Promotion preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs text-gray-400 text-center px-2">No image selected</span>
+                  )}
+                </div>
+
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="block w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-100 file:px-3 file:py-2 file:text-amber-700 file:font-medium hover:file:bg-amber-200"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">Upload a clear image for your overall restaurant promotion.</p>
+
+                  {(previewImage || formData.image) && (
+                    <button
+                      type="button"
+                      onClick={clearSelectedImage}
+                      className="mt-2 text-xs text-red-500 hover:text-red-600 font-medium"
+                    >
+                      Remove image
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {errors.image && (
+                <p className="text-red-500 text-sm mt-2">{errors.image}</p>
+              )}
+            </div>
+          )}
 
           {/* Menu Discount Specific Fields */}
           {formData.promotion_type === "menu_discount" && (

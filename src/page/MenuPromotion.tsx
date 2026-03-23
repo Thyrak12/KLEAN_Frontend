@@ -112,6 +112,13 @@ function PromotionCard({
         <h4 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
           {promotion.title}
         </h4>
+        <div className="w-full h-36 rounded-xl overflow-hidden bg-amber-100 mb-3">
+          <img
+            src={promotion.image || "https://via.placeholder.com/400x220?text=Promotion"}
+            alt={promotion.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
         <p className="text-sm text-gray-600 line-clamp-3 mb-4">
           {promotion.description}
         </p>
@@ -212,6 +219,7 @@ export default function MenuPromotion() {
     updatePromotion,
     deletePromotion,
     getMenuItemById,
+    uploadImage,
     loading,
   } = useMenu();
 
@@ -642,6 +650,7 @@ export default function MenuPromotion() {
         isOpen={promotionModalOpen}
         onClose={() => setPromotionModalOpen(false)}
         onSubmit={handlePromotionSubmit}
+        uploadImage={uploadImage}
         promotion={editingPromotion}
         menuItems={menuItems}
         mode={editingPromotion ? "edit" : "create"}

@@ -167,6 +167,7 @@ export async function fetchPromotions(): Promise<Promotion[]> {
     restaurant_id: userId,
     title: doc.data().title,
     description: doc.data().description || "",
+    image: doc.data().image || "",
     start_date: doc.data().start_date?.toDate() || new Date(),
     end_date: doc.data().end_date?.toDate() || new Date(),
     status: doc.data().status as PromotionStatus,
@@ -186,6 +187,7 @@ export async function createPromotion(input: CreatePromotionInput): Promise<Prom
     restaurant_id: userId,
     title: input.title,
     description: input.description,
+    image: input.image || "",
     start_date: input.start_date,
     end_date: input.end_date,
     status: input.status,
@@ -201,6 +203,7 @@ export async function createPromotion(input: CreatePromotionInput): Promise<Prom
     restaurant_id: userId,
     title: input.title,
     description: input.description,
+    image: input.image,
     start_date: input.start_date,
     end_date: input.end_date,
     status: input.status,
@@ -222,6 +225,7 @@ export async function updatePromotion(input: UpdatePromotionInput): Promise<Prom
   
   if (input.title !== undefined) updateData.title = input.title;
   if (input.description !== undefined) updateData.description = input.description;
+  if (input.image !== undefined) updateData.image = input.image;
   if (input.start_date !== undefined) updateData.start_date = input.start_date;
   if (input.end_date !== undefined) updateData.end_date = input.end_date;
   if (input.status !== undefined) updateData.status = input.status;
@@ -240,6 +244,7 @@ export async function updatePromotion(input: UpdatePromotionInput): Promise<Prom
     restaurant_id: userId,
     title: data?.title,
     description: data?.description || "",
+    image: data?.image || "",
     start_date: data?.start_date?.toDate() || new Date(),
     end_date: data?.end_date?.toDate() || new Date(),
     status: data?.status as PromotionStatus,
