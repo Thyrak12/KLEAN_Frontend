@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Store, Tag, Percent } from "lucide-react";
-import type { Promotion, CreatePromotionInput, PromotionStatus, PromotionType, MenuItem } from "../types/menu";
+import type { Promotion, CreatePromotionInput, PromotionStatus, PromotionType, RestaurantOfferType, MenuItem } from "../types/menu";
 import { auth } from "../config/firebase";
 
 interface PromotionModalProps {
@@ -22,6 +22,11 @@ const PROMOTION_STATUSES: { value: PromotionStatus; label: string }[] = [
 
 const DISCOUNT_OPTIONS = [5, 10, 15, 20, 25, 30, 40, 50];
 
+const RESTAURANT_OFFER_TYPES: { value: RestaurantOfferType; label: string; helper: string }[] = [
+  { value: "percentage", label: "Discount Percentage", helper: "e.g., 20% off total bill" },
+  { value: "non_discount", label: "Non-Discount Offer", helper: "e.g., Buy 1 Free 1, Free beer, Bundle deal" },
+];
+
 export default function PromotionModal({
   isOpen,
   onClose,
@@ -38,6 +43,9 @@ export default function PromotionModal({
     end_date: new Date(),
     status: "active",
     promotion_type: "restaurant",
+    offer_type: "non_discount",
+    discount_value: 0,
+    offer_details: "",
     menu_item_id: "",
     discount_percentage: 20,
     image: "",
@@ -56,6 +64,9 @@ export default function PromotionModal({
         end_date: new Date(promotion.end_date),
         status: promotion.status,
         promotion_type: promotion.promotion_type || "restaurant",
+        offer_type: promotion.offer_type === "percentage" ? "percentage" : "non_discount",
+        discount_value: promotion.discount_value || 0,
+        offer_details: promotion.offer_details || "",
         menu_item_id: promotion.menu_item_id || "",
         discount_percentage: promotion.discount_percentage || 20,
         image: promotion.image || "",
@@ -70,6 +81,9 @@ export default function PromotionModal({
         end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         status: "active",
         promotion_type: "restaurant",
+        offer_type: "non_discount",
+        discount_value: 0,
+        offer_details: "",
         menu_item_id: "",
         discount_percentage: 20,
         image: "",
@@ -93,6 +107,21 @@ export default function PromotionModal({
 
     if (!formData.description.trim()) {
       newErrors.description = "Description is required";
+    }
+
+    if (formData.promotion_type === "restaurant") {
+      if (!formData.offer_type) {
+        newErrors.offer_type = "Please select an offer type";
+      }
+
+      if (formData.offer_type === "percentage" && (!formData.discount_value || formData.discount_value <= 0)) {
+        newErrors.discount_value =
+          "Please enter a valid percentage value";
+      }
+
+      if (formData.offer_type === "non_discount" && !formData.offer_details?.trim()) {
+        newErrors.offer_details = "Please provide offer details";
+      }
     }
 
     if (formData.promotion_type === "restaurant" && !imageFile && !formData.image) {
@@ -132,6 +161,17 @@ export default function PromotionModal({
       const submitData: CreatePromotionInput = {
         ...formData,
         image: formData.promotion_type === "restaurant" ? imageUrl : undefined,
+        offer_type: formData.promotion_type === "restaurant" ? formData.offer_type : undefined,
+        discount_value:
+          formData.promotion_type === "restaurant" &&
+          formData.offer_type === "percentage"
+            ? formData.discount_value
+            : undefined,
+        offer_details:
+          formData.promotion_type === "restaurant" &&
+          formData.offer_type === "non_discount"
+            ? formData.offer_details
+            : undefined,
         menu_item_id: formData.promotion_type === "menu_discount" ? formData.menu_item_id : undefined,
         discount_percentage: formData.promotion_type === "menu_discount" ? formData.discount_percentage : undefined,
       };
@@ -155,6 +195,8 @@ export default function PromotionModal({
       setFormData((prev) => ({ ...prev, [name]: new Date(value) }));
     } else if (name === "discount_percentage") {
       setFormData((prev) => ({ ...prev, [name]: parseInt(value) || 0 }));
+    } else if (name === "discount_value") {
+      setFormData((prev) => ({ ...prev, discount_value: parseFloat(value) || 0 }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -168,10 +210,22 @@ export default function PromotionModal({
     setFormData((prev) => ({
       ...prev,
       promotion_type: type,
+      offer_type: type === "restaurant" ? prev.offer_type || "non_discount" : undefined,
+      discount_value: type === "restaurant" ? prev.discount_value || 0 : undefined,
+      offer_details: type === "restaurant" ? prev.offer_details || "" : undefined,
       menu_item_id: type === "restaurant" ? "" : prev.menu_item_id,
     }));
-    setErrors((prev) => ({ ...prev, menu_item_id: "", image: "" }));
+    setErrors((prev) => ({
+      ...prev,
+      menu_item_id: "",
+      image: "",
+      offer_type: "",
+      discount_value: "",
+      offer_details: "",
+    }));
   };
+
+  const selectedOfferType = RESTAURANT_OFFER_TYPES.find((item) => item.value === formData.offer_type);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -344,6 +398,82 @@ export default function PromotionModal({
           {/* Restaurant Promotion Image (Required) */}
           {formData.promotion_type === "restaurant" && (
             <div>
+              <label className="block text-gray-700 font-medium mb-2">
+                Offer Format <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="offer_type"
+                value={formData.offer_type || "non_discount"}
+                onChange={handleChange}
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 bg-white mb-2 ${
+                  errors.offer_type
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-100"
+                    : "border-gray-300 focus:border-amber-400 focus:ring-amber-100"
+                }`}
+              >
+                {RESTAURANT_OFFER_TYPES.map((offer) => (
+                  <option key={offer.value} value={offer.value}>
+                    {offer.label}
+                  </option>
+                ))}
+              </select>
+              {selectedOfferType && (
+                <p className="text-xs text-gray-500 mb-2">{selectedOfferType.helper}</p>
+              )}
+              {errors.offer_type && (
+                <p className="text-red-500 text-sm mb-2">{errors.offer_type}</p>
+              )}
+
+              {formData.offer_type === "percentage" && (
+                <div className="mb-4">
+                  <label className="block text-gray-700 font-medium mb-2">
+                    Discount Percentage
+                    <span className="text-red-500"> *</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    max="100"
+                    name="discount_value"
+                    value={formData.discount_value || 0}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                      errors.discount_value
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-100"
+                        : "border-gray-300 focus:border-amber-400 focus:ring-amber-100"
+                    }`}
+                    placeholder="e.g., 20"
+                  />
+                  {errors.discount_value && (
+                    <p className="text-red-500 text-sm mt-1">{errors.discount_value}</p>
+                  )}
+                </div>
+              )}
+
+              {formData.offer_type === "non_discount" && (
+                <div className="mb-4">
+                  <label className="block text-gray-700 font-medium mb-2">
+                    Offer Details <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    name="offer_details"
+                    value={formData.offer_details || ""}
+                    onChange={handleChange}
+                    rows={2}
+                    placeholder="e.g., Buy 1 ramen free 1 ramen / Free beer with any main course"
+                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 resize-none ${
+                      errors.offer_details
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-100"
+                        : "border-gray-300 focus:border-amber-400 focus:ring-amber-100"
+                    }`}
+                  />
+                  {errors.offer_details && (
+                    <p className="text-red-500 text-sm mt-1">{errors.offer_details}</p>
+                  )}
+                </div>
+              )}
+
               <label className="block text-gray-700 font-medium mb-2">
                 Promotion Image <span className="text-red-500">*</span>
               </label>

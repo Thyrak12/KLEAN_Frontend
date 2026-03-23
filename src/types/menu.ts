@@ -46,6 +46,9 @@ export interface UpdateMenuItemInput extends Partial<CreateMenuItemInput> {
 
 // Promotion Types
 export type PromotionType = "restaurant" | "menu_discount";
+export type RestaurantOfferType =
+  | "percentage"
+  | "non_discount";
 
 export interface Promotion {
   id: string;
@@ -57,6 +60,9 @@ export interface Promotion {
   end_date: Date;
   status: PromotionStatus;
   promotion_type: PromotionType;
+  offer_type?: RestaurantOfferType; // Only for restaurant promotions
+  discount_value?: number; // For percentage restaurant offers
+  offer_details?: string; // For non-discount restaurant offers
   menu_item_id?: string; // Optional - only for menu_discount type
   discount_percentage?: number; // Only for menu_discount type
   created_at: Date;
@@ -73,6 +79,9 @@ export interface CreatePromotionInput {
   end_date: Date;
   status: PromotionStatus;
   promotion_type: PromotionType;
+  offer_type?: RestaurantOfferType; // Only for restaurant promotions
+  discount_value?: number; // For percentage restaurant offers
+  offer_details?: string; // For non-discount restaurant offers
   menu_item_id?: string; // Optional - only for menu_discount type
   discount_percentage?: number; // Only for menu_discount type
 }

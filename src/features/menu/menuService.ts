@@ -24,6 +24,13 @@ import type {
   PromotionType,
 } from "../../types/menu";
 
+const normalizeOfferType = (value: unknown): "percentage" | "non_discount" | undefined => {
+  if (value === "percentage") return "percentage";
+  if (value === "non_discount") return "non_discount";
+  if (typeof value === "string") return "non_discount";
+  return undefined;
+};
+
 // Helper to get current user ID
 const getUserId = (): string => {
   const user = auth.currentUser;
@@ -172,6 +179,9 @@ export async function fetchPromotions(): Promise<Promotion[]> {
     end_date: doc.data().end_date?.toDate() || new Date(),
     status: doc.data().status as PromotionStatus,
     promotion_type: (doc.data().promotion_type as PromotionType) || "restaurant",
+    offer_type: normalizeOfferType(doc.data().offer_type),
+    discount_value: doc.data().discount_value || 0,
+    offer_details: doc.data().offer_details || "",
     menu_item_id: doc.data().menu_item_id,
     discount_percentage: doc.data().discount_percentage || 0,
     created_at: doc.data().created_at?.toDate() || new Date(),
@@ -192,6 +202,9 @@ export async function createPromotion(input: CreatePromotionInput): Promise<Prom
     end_date: input.end_date,
     status: input.status,
     promotion_type: input.promotion_type,
+    offer_type: input.offer_type || null,
+    discount_value: input.discount_value || 0,
+    offer_details: input.offer_details || "",
     menu_item_id: input.menu_item_id || null,
     discount_percentage: input.discount_percentage || 0,
     created_at: serverTimestamp(),
@@ -208,6 +221,9 @@ export async function createPromotion(input: CreatePromotionInput): Promise<Prom
     end_date: input.end_date,
     status: input.status,
     promotion_type: input.promotion_type,
+    offer_type: input.offer_type,
+    discount_value: input.discount_value,
+    offer_details: input.offer_details,
     menu_item_id: input.menu_item_id,
     discount_percentage: input.discount_percentage,
     created_at: new Date(),
@@ -230,6 +246,9 @@ export async function updatePromotion(input: UpdatePromotionInput): Promise<Prom
   if (input.end_date !== undefined) updateData.end_date = input.end_date;
   if (input.status !== undefined) updateData.status = input.status;
   if (input.promotion_type !== undefined) updateData.promotion_type = input.promotion_type;
+  if (input.offer_type !== undefined) updateData.offer_type = input.offer_type;
+  if (input.discount_value !== undefined) updateData.discount_value = input.discount_value;
+  if (input.offer_details !== undefined) updateData.offer_details = input.offer_details;
   if (input.menu_item_id !== undefined) updateData.menu_item_id = input.menu_item_id;
   if (input.discount_percentage !== undefined) updateData.discount_percentage = input.discount_percentage;
   
@@ -249,6 +268,9 @@ export async function updatePromotion(input: UpdatePromotionInput): Promise<Prom
     end_date: data?.end_date?.toDate() || new Date(),
     status: data?.status as PromotionStatus,
     promotion_type: (data?.promotion_type as PromotionType) || "restaurant",
+    offer_type: normalizeOfferType(data?.offer_type),
+    discount_value: data?.discount_value || 0,
+    offer_details: data?.offer_details || "",
     menu_item_id: data?.menu_item_id,
     discount_percentage: data?.discount_percentage || 0,
     created_at: data?.created_at?.toDate() || new Date(),

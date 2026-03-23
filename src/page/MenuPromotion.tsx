@@ -71,6 +71,17 @@ function PromotionCard({
   const originalPrice = menuItem?.price || 0;
   const discountedPrice = originalPrice * (1 - (promotion.discount_percentage || 0) / 100);
 
+  const getRestaurantOfferText = () => {
+    switch (promotion.offer_type) {
+      case "percentage":
+        return promotion.discount_value ? `${promotion.discount_value}% OFF` : "Percentage Offer";
+      case "non_discount":
+        return promotion.offer_details || "Special Offer";
+      default:
+        return promotion.offer_details || "Special Offer";
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
@@ -118,6 +129,11 @@ function PromotionCard({
             alt={promotion.title}
             className="w-full h-full object-cover"
           />
+        </div>
+        <div className="mb-2">
+          <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+            {getRestaurantOfferText()}
+          </span>
         </div>
         <p className="text-sm text-gray-600 line-clamp-3 mb-4">
           {promotion.description}
@@ -292,6 +308,7 @@ export default function MenuPromotion() {
     const matchesSearch = 
       promo.title.toLowerCase().includes(promotionSearch.toLowerCase()) ||
       promo.description.toLowerCase().includes(promotionSearch.toLowerCase()) ||
+      (promo.offer_details || "").toLowerCase().includes(promotionSearch.toLowerCase()) ||
       menuItem?.item_name.toLowerCase().includes(promotionSearch.toLowerCase());
     if (!matchesSearch) return false;
     
