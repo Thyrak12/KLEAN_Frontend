@@ -37,8 +37,16 @@ export default function PromotionModal({
   mode,
 }: PromotionModalProps) {
   const [formData, setFormData] = useState<CreatePromotionInput>({
+    scope: "overall",
     title: "",
     description: "",
+    benefitType: "non_discount",
+    benefitValue: 0,
+    benefitText: "",
+    menuItemId: "",
+    startAt: new Date(),
+    endAt: new Date(),
+    isPublished: true,
     start_date: new Date(),
     end_date: new Date(),
     status: "active",
@@ -47,7 +55,6 @@ export default function PromotionModal({
     discount_value: 0,
     offer_details: "",
     menu_item_id: "",
-    discount_percentage: 20,
     image: "",
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -58,25 +65,40 @@ export default function PromotionModal({
   useEffect(() => {
     if (promotion && mode === "edit") {
       setFormData({
+        scope: promotion.scope || (promotion.promotion_type === "menu_discount" ? "menu_item" : "overall"),
         title: promotion.title,
         description: promotion.description,
-        start_date: new Date(promotion.start_date),
-        end_date: new Date(promotion.end_date),
+        benefitType: promotion.benefitType || (promotion.offer_type === "percentage" ? "percentage" : "non_discount"),
+        benefitValue: promotion.benefitValue ?? promotion.discount_value ?? 0,
+        benefitText: promotion.benefitText ?? promotion.offer_details ?? "",
+        menuItemId: promotion.menuItemId ?? promotion.menu_item_id ?? "",
+        startAt: new Date(promotion.startAt ?? promotion.start_date ?? new Date()),
+        endAt: new Date(promotion.endAt ?? promotion.end_date ?? new Date()),
+        isPublished: typeof promotion.isPublished === "boolean" ? promotion.isPublished : promotion.status !== "draft",
+        start_date: new Date(promotion.start_date ?? promotion.startAt ?? new Date()),
+        end_date: new Date(promotion.end_date ?? promotion.endAt ?? new Date()),
         status: promotion.status,
         promotion_type: promotion.promotion_type || "restaurant",
         offer_type: promotion.offer_type === "percentage" ? "percentage" : "non_discount",
         discount_value: promotion.discount_value || 0,
         offer_details: promotion.offer_details || "",
         menu_item_id: promotion.menu_item_id || "",
-        discount_percentage: promotion.discount_percentage || 20,
         image: promotion.image || "",
       });
       setPreviewImage(promotion.image || "");
       setImageFile(null);
     } else {
       setFormData({
+        scope: "overall",
         title: "",
         description: "",
+        benefitType: "non_discount",
+        benefitValue: 0,
+        benefitText: "",
+        menuItemId: "",
+        startAt: new Date(),
+        endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        isPublished: true,
         start_date: new Date(),
         end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         status: "active",
@@ -85,7 +107,6 @@ export default function PromotionModal({
         discount_value: 0,
         offer_details: "",
         menu_item_id: "",
-        discount_percentage: 20,
         image: "",
       });
       setPreviewImage("");
@@ -132,7 +153,7 @@ export default function PromotionModal({
       newErrors.menu_item_id = "Please select a menu item for discount";
     }
 
-    if (new Date(formData.end_date) <= new Date(formData.start_date)) {
+    if (new Date(formData.end_date ?? new Date()) <= new Date(formData.start_date ?? new Date())) {
       newErrors.end_date = "End date must be after start date";
     }
 
@@ -160,6 +181,14 @@ export default function PromotionModal({
       // Clean up data based on promotion type
       const submitData: CreatePromotionInput = {
         ...formData,
+        scope: formData.promotion_type === "menu_discount" ? "menu_item" : "overall",
+        benefitType: formData.offer_type === "percentage" ? "percentage" : "non_discount",
+        benefitValue: formData.offer_type === "percentage" ? formData.discount_value : undefined,
+        benefitText: formData.offer_type === "non_discount" ? formData.offer_details : undefined,
+        menuItemId: formData.promotion_type === "menu_discount" ? formData.menu_item_id : undefined,
+        startAt: formData.start_date ?? new Date(),
+        endAt: formData.end_date ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        isPublished: formData.status !== "inactive",
         image: formData.promotion_type === "restaurant" ? imageUrl : undefined,
         offer_type: formData.promotion_type === "restaurant" ? formData.offer_type : undefined,
         discount_value:
@@ -173,7 +202,6 @@ export default function PromotionModal({
             ? formData.offer_details
             : undefined,
         menu_item_id: formData.promotion_type === "menu_discount" ? formData.menu_item_id : undefined,
-        discount_percentage: formData.promotion_type === "menu_discount" ? formData.discount_percentage : undefined,
       };
       await onSubmit(submitData);
       onClose();
@@ -193,10 +221,13 @@ export default function PromotionModal({
 
     if (name === "start_date" || name === "end_date") {
       setFormData((prev) => ({ ...prev, [name]: new Date(value) }));
-    } else if (name === "discount_percentage") {
-      setFormData((prev) => ({ ...prev, [name]: parseInt(value) || 0 }));
     } else if (name === "discount_value") {
-      setFormData((prev) => ({ ...prev, discount_value: parseFloat(value) || 0 }));
+      const numeric = parseFloat(value) || 0;
+      setFormData((prev) => ({
+        ...prev,
+        discount_value: numeric,
+        benefitValue: numeric,
+      }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -558,9 +589,15 @@ export default function PromotionModal({
                     <button
                       key={discount}
                       type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, discount_percentage: discount }))}
+                      onClick={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          discount_value: discount,
+                          benefitValue: discount,
+                        }))
+                      }
                       className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                        formData.discount_percentage === discount
+                        formData.discount_value === discount
                           ? "bg-amber-400 text-white"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
@@ -572,7 +609,7 @@ export default function PromotionModal({
               </div>
 
               {/* Price Preview */}
-              {selectedMenuItem && formData.discount_percentage && (
+              {selectedMenuItem && formData.discount_value && (
                 <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
                   <div className="flex items-center gap-3">
                     <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
@@ -589,11 +626,11 @@ export default function PromotionModal({
                           ${selectedMenuItem.price.toFixed(2)}
                         </span>
                         <span className="text-lg font-bold text-amber-600">
-                          ${(selectedMenuItem.price * (1 - (formData.discount_percentage || 0) / 100)).toFixed(2)}
+                          ${(selectedMenuItem.price * (1 - (formData.discount_value || 0) / 100)).toFixed(2)}
                         </span>
                         <span className="bg-amber-400 text-white text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Percent size={10} />
-                          {formData.discount_percentage} OFF
+                          {formData.discount_value}% OFF
                         </span>
                       </div>
                     </div>
@@ -632,7 +669,7 @@ export default function PromotionModal({
               <input
                 type="date"
                 name="start_date"
-                value={formatDateForInput(formData.start_date)}
+                value={formatDateForInput(formData.start_date ?? new Date())}
                 onChange={handleChange}
                 className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 text-sm"
               />
@@ -646,7 +683,7 @@ export default function PromotionModal({
               <input
                 type="date"
                 name="end_date"
-                value={formatDateForInput(formData.end_date)}
+                value={formatDateForInput(formData.end_date ?? new Date())}
                 onChange={handleChange}
                 className={`w-full px-3 py-3 border rounded-lg focus:outline-none focus:ring-2 text-sm ${
                   errors.end_date

@@ -6,8 +6,6 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  query,
-  where,
   serverTimestamp,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
@@ -20,15 +18,56 @@ import type {
   CreatePromotionInput,
   UpdatePromotionInput,
   MenuCategory,
-  PromotionStatus,
-  PromotionType,
+  PromotionScope,
+  PromotionBenefitType,
+  PromotionComputedStatus,
 } from "../../types/menu";
 
-const normalizeOfferType = (value: unknown): "percentage" | "non_discount" | undefined => {
-  if (value === "percentage") return "percentage";
-  if (value === "non_discount") return "non_discount";
-  if (typeof value === "string") return "non_discount";
-  return undefined;
+const normalizeScope = (value: unknown): PromotionScope => {
+  if (value === "overall" || value === "menu_item") return value;
+  // backward compatibility
+  if (value === "restaurant") return "overall";
+  if (value === "menu_discount") return "menu_item";
+  return "overall";
+};
+
+const normalizeBenefitType = (value: unknown, docData: Record<string, unknown>): PromotionBenefitType => {
+  if (value === "percentage" || value === "non_discount") return value;
+
+  // backward compatibility
+  const oldOfferType = docData.offer_type;
+  if (oldOfferType === "percentage") return "percentage";
+
+  const discountValue = Number(docData.discount_value || 0);
+  if (discountValue > 0) return "percentage";
+
+  return "non_discount";
+};
+
+const toDateValue = (value: unknown): Date => {
+  if (!value) return new Date();
+
+  if (value instanceof Date) return value;
+
+  if (typeof value === "object" && value !== null && "toDate" in value) {
+    const timestampLike = value as { toDate: () => Date };
+    return timestampLike.toDate();
+  }
+
+  return new Date(value as string | number);
+};
+
+const computePromotionStatus = (
+  isPublished: boolean,
+  startAt: Date,
+  endAt: Date
+): PromotionComputedStatus => {
+  if (!isPublished) return "draft";
+  const now = new Date();
+
+  if (now < startAt) return "scheduled";
+  if (now > endAt) return "expired";
+  return "active";
 };
 
 // Helper to get current user ID
@@ -149,10 +188,14 @@ export async function deleteMenuItem(id: string): Promise<void> {
   
   // First, delete all promotions linked to this menu item
   const promotionsRef = collection(db, "restaurants", userId, "promotions");
-  const q = query(promotionsRef, where("menu_item_id", "==", id));
-  const promotionsSnapshot = await getDocs(q);
-  
-  const deletePromises = promotionsSnapshot.docs.map((doc) => deleteDoc(doc.ref));
+  const promotionsSnapshot = await getDocs(promotionsRef);
+
+  const deletePromises = promotionsSnapshot.docs
+    .filter((promotionDoc) => {
+      const data = promotionDoc.data();
+      return data.menuItemId === id || data.menu_item_id === id;
+    })
+    .map((promotionDoc) => deleteDoc(promotionDoc.ref));
   await Promise.all(deletePromises);
   
   // Then delete the menu item
@@ -169,44 +212,88 @@ export async function fetchPromotions(): Promise<Promotion[]> {
   const promoRef = collection(db, "restaurants", userId, "promotions");
   const snapshot = await getDocs(promoRef);
   
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    restaurant_id: userId,
-    title: doc.data().title,
-    description: doc.data().description || "",
-    image: doc.data().image || "",
-    start_date: doc.data().start_date?.toDate() || new Date(),
-    end_date: doc.data().end_date?.toDate() || new Date(),
-    status: doc.data().status as PromotionStatus,
-    promotion_type: (doc.data().promotion_type as PromotionType) || "restaurant",
-    offer_type: normalizeOfferType(doc.data().offer_type),
-    discount_value: doc.data().discount_value || 0,
-    offer_details: doc.data().offer_details || "",
-    menu_item_id: doc.data().menu_item_id,
-    discount_percentage: doc.data().discount_percentage || 0,
-    created_at: doc.data().created_at?.toDate() || new Date(),
-    updated_at: doc.data().updated_at?.toDate() || new Date(),
-  }));
+  return snapshot.docs.map((promotionDoc) => {
+    const data = promotionDoc.data();
+
+    const scope = normalizeScope(data.scope ?? data.promotion_type);
+    const benefitType = normalizeBenefitType(data.benefitType, data);
+    const benefitValue = Number(data.benefitValue ?? data.discount_value ?? 0) || 0;
+    const benefitText = String(data.benefitText ?? data.offer_details ?? "");
+    const startAt = toDateValue(data.startAt ?? data.start_date);
+    const endAt = toDateValue(data.endAt ?? data.end_date);
+    const isPublished =
+      typeof data.isPublished === "boolean"
+        ? data.isPublished
+        : data.status === "inactive"
+          ? false
+          : true;
+
+    const computedStatus = computePromotionStatus(isPublished, startAt, endAt);
+
+    return {
+      id: promotionDoc.id,
+      restaurant_id: userId,
+      scope,
+      title: data.title || "",
+      description: data.description || "",
+      image: data.image || "",
+      benefitType,
+      benefitValue: benefitType === "percentage" ? benefitValue : undefined,
+      benefitText: benefitType === "non_discount" ? benefitText : undefined,
+      discount_value: benefitType === "percentage" ? benefitValue : undefined,
+      menuItemId: data.menuItemId || data.menu_item_id || undefined,
+      menu_item_id: data.menuItemId || data.menu_item_id || undefined,
+      startAt,
+      endAt,
+      start_date: startAt,
+      end_date: endAt,
+      isPublished,
+      status: computedStatus,
+      created_at: toDateValue(data.created_at),
+      updated_at: toDateValue(data.updated_at),
+    };
+  });
 }
 
 export async function createPromotion(input: CreatePromotionInput): Promise<Promotion> {
   const userId = getUserId();
   const promoRef = collection(db, "restaurants", userId, "promotions");
+
+  const scope = input.scope ?? normalizeScope(input.promotion_type);
+  const benefitType = input.benefitType ?? (input.offer_type === "percentage" ? "percentage" : "non_discount");
+  const benefitValue =
+    input.benefitValue ?? input.discount_value ?? 0;
+  const benefitText = input.benefitText ?? input.offer_details ?? "";
+  const menuItemId = input.menuItemId ?? input.menu_item_id;
+  const startAt = input.startAt ?? input.start_date ?? new Date();
+  const endAt = input.endAt ?? input.end_date ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const isPublished =
+    typeof input.isPublished === "boolean"
+      ? input.isPublished
+      : input.status === "inactive"
+        ? false
+        : true;
+
+  const computedStatus = computePromotionStatus(isPublished, startAt, endAt);
   
   const docRef = await addDoc(promoRef, {
     restaurant_id: userId,
+    scope,
     title: input.title,
     description: input.description,
     image: input.image || "",
-    start_date: input.start_date,
-    end_date: input.end_date,
-    status: input.status,
-    promotion_type: input.promotion_type,
-    offer_type: input.offer_type || null,
-    discount_value: input.discount_value || 0,
-    offer_details: input.offer_details || "",
-    menu_item_id: input.menu_item_id || null,
-    discount_percentage: input.discount_percentage || 0,
+    benefitType,
+    benefitValue: benefitType === "percentage" ? benefitValue : null,
+    benefitText: benefitType === "non_discount" ? benefitText : "",
+    discount_value: benefitType === "percentage" ? benefitValue : 0,
+    menuItemId: scope === "menu_item" ? menuItemId || null : null,
+    menu_item_id: scope === "menu_item" ? menuItemId || null : null,
+    startAt,
+    endAt,
+    start_date: startAt,
+    end_date: endAt,
+    isPublished,
+    status: computedStatus,
     created_at: serverTimestamp(),
     updated_at: serverTimestamp(),
   });
@@ -214,18 +301,18 @@ export async function createPromotion(input: CreatePromotionInput): Promise<Prom
   return {
     id: docRef.id,
     restaurant_id: userId,
+    scope,
     title: input.title,
     description: input.description,
     image: input.image,
-    start_date: input.start_date,
-    end_date: input.end_date,
-    status: input.status,
-    promotion_type: input.promotion_type,
-    offer_type: input.offer_type,
-    discount_value: input.discount_value,
-    offer_details: input.offer_details,
-    menu_item_id: input.menu_item_id,
-    discount_percentage: input.discount_percentage,
+    benefitType,
+    benefitValue: benefitType === "percentage" ? benefitValue : undefined,
+    benefitText: benefitType === "non_discount" ? benefitText : undefined,
+    menuItemId: scope === "menu_item" ? menuItemId : undefined,
+    startAt,
+    endAt,
+    isPublished,
+    status: computedStatus,
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -239,18 +326,52 @@ export async function updatePromotion(input: UpdatePromotionInput): Promise<Prom
     updated_at: serverTimestamp(),
   };
   
+  if (input.scope !== undefined) updateData.scope = input.scope;
+  if (input.promotion_type !== undefined) updateData.scope = normalizeScope(input.promotion_type);
   if (input.title !== undefined) updateData.title = input.title;
   if (input.description !== undefined) updateData.description = input.description;
   if (input.image !== undefined) updateData.image = input.image;
-  if (input.start_date !== undefined) updateData.start_date = input.start_date;
-  if (input.end_date !== undefined) updateData.end_date = input.end_date;
-  if (input.status !== undefined) updateData.status = input.status;
-  if (input.promotion_type !== undefined) updateData.promotion_type = input.promotion_type;
-  if (input.offer_type !== undefined) updateData.offer_type = input.offer_type;
-  if (input.discount_value !== undefined) updateData.discount_value = input.discount_value;
-  if (input.offer_details !== undefined) updateData.offer_details = input.offer_details;
-  if (input.menu_item_id !== undefined) updateData.menu_item_id = input.menu_item_id;
-  if (input.discount_percentage !== undefined) updateData.discount_percentage = input.discount_percentage;
+  if (input.benefitType !== undefined) updateData.benefitType = input.benefitType;
+  if (input.offer_type !== undefined) updateData.benefitType = input.offer_type;
+  if (input.benefitValue !== undefined) updateData.benefitValue = input.benefitValue;
+  if (input.discount_value !== undefined) updateData.benefitValue = input.discount_value;
+
+  const syncedDiscount =
+    input.benefitValue ??
+    input.discount_value;
+  if (syncedDiscount !== undefined) {
+    updateData.discount_value = syncedDiscount;
+  }
+  if (input.benefitText !== undefined) updateData.benefitText = input.benefitText;
+  if (input.offer_details !== undefined) updateData.benefitText = input.offer_details;
+  if (input.menuItemId !== undefined) updateData.menuItemId = input.menuItemId;
+  if (input.menu_item_id !== undefined) updateData.menuItemId = input.menu_item_id;
+  if (input.startAt !== undefined) updateData.startAt = input.startAt;
+  if (input.start_date !== undefined) updateData.startAt = input.start_date;
+  if (input.endAt !== undefined) updateData.endAt = input.endAt;
+  if (input.end_date !== undefined) updateData.endAt = input.end_date;
+  if (input.isPublished !== undefined) updateData.isPublished = input.isPublished;
+  if (input.status !== undefined) updateData.isPublished = input.status !== "inactive";
+
+  const updateStart = input.startAt ?? input.start_date;
+  const updateEnd = input.endAt ?? input.end_date;
+  const updatePublished = input.isPublished ?? (input.status !== undefined ? input.status !== "inactive" : undefined);
+
+  if (updateStart || updateEnd || updatePublished !== undefined) {
+    const currentDoc = await getDoc(docRef);
+    const currentData = currentDoc.data() || {};
+    const finalStart = updateStart ?? toDateValue(currentData.startAt ?? currentData.start_date);
+    const finalEnd = updateEnd ?? toDateValue(currentData.endAt ?? currentData.end_date);
+    const finalPublished =
+      updatePublished ??
+      (typeof currentData.isPublished === "boolean"
+        ? currentData.isPublished
+        : currentData.status === "inactive"
+          ? false
+          : true);
+
+    updateData.status = computePromotionStatus(finalPublished, finalStart, finalEnd);
+  }
   
   await updateDoc(docRef, updateData);
   
@@ -261,18 +382,44 @@ export async function updatePromotion(input: UpdatePromotionInput): Promise<Prom
   return {
     id: input.id,
     restaurant_id: userId,
+    scope: normalizeScope(data?.scope ?? data?.promotion_type),
     title: data?.title,
     description: data?.description || "",
     image: data?.image || "",
-    start_date: data?.start_date?.toDate() || new Date(),
-    end_date: data?.end_date?.toDate() || new Date(),
-    status: data?.status as PromotionStatus,
-    promotion_type: (data?.promotion_type as PromotionType) || "restaurant",
-    offer_type: normalizeOfferType(data?.offer_type),
-    discount_value: data?.discount_value || 0,
-    offer_details: data?.offer_details || "",
-    menu_item_id: data?.menu_item_id,
-    discount_percentage: data?.discount_percentage || 0,
+    benefitType: normalizeBenefitType(data?.benefitType, data || {}),
+    benefitValue:
+      normalizeBenefitType(data?.benefitType, data || {}) === "percentage"
+        ? Number(data?.benefitValue ?? data?.discount_value ?? 0)
+        : undefined,
+    benefitText:
+      normalizeBenefitType(data?.benefitType, data || {}) === "non_discount"
+        ? String(data?.benefitText ?? data?.offer_details ?? "")
+        : undefined,
+    discount_value:
+      normalizeBenefitType(data?.benefitType, data || {}) === "percentage"
+        ? Number(data?.benefitValue ?? data?.discount_value ?? 0)
+        : undefined,
+    menuItemId: data?.menuItemId || data?.menu_item_id || undefined,
+    menu_item_id: data?.menuItemId || data?.menu_item_id || undefined,
+    startAt: toDateValue(data?.startAt ?? data?.start_date),
+    endAt: toDateValue(data?.endAt ?? data?.end_date),
+    start_date: toDateValue(data?.startAt ?? data?.start_date),
+    end_date: toDateValue(data?.endAt ?? data?.end_date),
+    isPublished:
+      typeof data?.isPublished === "boolean"
+        ? data.isPublished
+        : data?.status === "inactive"
+          ? false
+          : true,
+    status: computePromotionStatus(
+      typeof data?.isPublished === "boolean"
+        ? data.isPublished
+        : data?.status === "inactive"
+          ? false
+          : true,
+      toDateValue(data?.startAt ?? data?.start_date),
+      toDateValue(data?.endAt ?? data?.end_date)
+    ),
     created_at: data?.created_at?.toDate() || new Date(),
     updated_at: data?.updated_at?.toDate() || new Date(),
   };

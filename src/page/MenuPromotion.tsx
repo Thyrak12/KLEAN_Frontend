@@ -69,7 +69,8 @@ function PromotionCard({
 }) {
   const isMenuDiscount = promotion.promotion_type === "menu_discount";
   const originalPrice = menuItem?.price || 0;
-  const discountedPrice = originalPrice * (1 - (promotion.discount_percentage || 0) / 100);
+  const discountRate = promotion.discount_value || promotion.benefitValue || 0;
+  const discountedPrice = originalPrice * (1 - discountRate / 100);
 
   const getRestaurantOfferText = () => {
     switch (promotion.offer_type) {
@@ -82,7 +83,7 @@ function PromotionCard({
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status?: string) => {
     switch (status) {
       case "active":
         return "bg-green-500";
@@ -141,7 +142,7 @@ function PromotionCard({
 
         {/* Date range */}
         <div className="text-xs text-gray-500 mb-4">
-          {new Date(promotion.start_date).toLocaleDateString()} - {new Date(promotion.end_date).toLocaleDateString()}
+          {new Date(promotion.startAt ?? promotion.start_date ?? new Date()).toLocaleDateString()} - {new Date(promotion.endAt ?? promotion.end_date ?? new Date()).toLocaleDateString()}
         </div>
 
         <div className="flex items-center gap-2">
@@ -169,16 +170,16 @@ function PromotionCard({
     <div className="relative bg-white rounded-2xl shadow-sm p-5 flex flex-col items-center gap-3 w-[200px] flex-shrink-0">
       {/* Discount badge */}
       <span className="absolute top-3 left-3 bg-amber-400 text-white text-xs font-bold px-3 py-1 rounded-full shadow">
-        {promotion.discount_percentage}% Off
+        {discountRate}% Off
       </span>
 
       {/* Status badge */}
       <span
         className={`absolute top-3 right-3 ${getStatusColor(
-          promotion.status
+            promotion.status
         )} text-white text-xs font-bold px-2 py-1 rounded-full capitalize`}
       >
-        {promotion.status}
+          {promotion.status || "draft"}
       </span>
 
       <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-100 shadow-md mt-4">

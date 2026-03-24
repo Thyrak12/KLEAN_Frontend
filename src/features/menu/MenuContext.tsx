@@ -119,7 +119,7 @@ export function MenuProvider({ children }: { children: ReactNode }) {
     try {
       await menuService.deleteMenuItem(id);
       // Remove from local state (promotions are also deleted in service)
-      setPromotions((prev) => prev.filter((p) => p.menu_item_id !== id));
+      setPromotions((prev) => prev.filter((p) => p.menuItemId !== id));
       setMenuItems((prev) => prev.filter((item) => item.id !== id));
     } catch (error) {
       console.error("Failed to delete menu item:", error);
@@ -189,7 +189,7 @@ export function MenuProvider({ children }: { children: ReactNode }) {
 
   const getPromotionsByMenuItem = useCallback(
     (menuItemId: string): Promotion[] => {
-      return promotions.filter((p) => p.menu_item_id === menuItemId);
+      return promotions.filter((p) => p.menuItemId === menuItemId);
     },
     [promotions]
   );

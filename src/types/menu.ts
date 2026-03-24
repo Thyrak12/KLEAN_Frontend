@@ -45,45 +45,92 @@ export interface UpdateMenuItemInput extends Partial<CreateMenuItemInput> {
 }
 
 // Promotion Types
+export type PromotionScope = "overall" | "menu_item";
+export type PromotionBenefitType = "percentage" | "non_discount";
+export type PromotionComputedStatus = "draft" | "scheduled" | "active" | "expired";
+
+// Backward-compatible aliases (legacy)
 export type PromotionType = "restaurant" | "menu_discount";
-export type RestaurantOfferType =
-  | "percentage"
-  | "non_discount";
+export type RestaurantOfferType = "percentage" | "non_discount";
 
 export interface Promotion {
   id: string;
-  restaurant_id: string;
+  restaurant_id?: string;
+  // 1. Scope (WHERE)
+  scope: PromotionScope;
+
+  // 2. Content
   title: string;
   description: string;
   image?: string;
-  start_date: Date;
-  end_date: Date;
-  status: PromotionStatus;
-  promotion_type: PromotionType;
-  offer_type?: RestaurantOfferType; // Only for restaurant promotions
-  discount_value?: number; // For percentage restaurant offers
-  offer_details?: string; // For non-discount restaurant offers
-  menu_item_id?: string; // Optional - only for menu_discount type
-  discount_percentage?: number; // Only for menu_discount type
+
+  // 3. Benefit (WHAT)
+  benefitType: PromotionBenefitType;
+  benefitValue?: number; // for percentage
+  benefitText?: string; // for non-discount
+
+  // 4. Target (ONLY if menu_item)
+  menuItemId?: string;
+
+  // 5. Time
+  startAt: Date;
+  endAt: Date;
+
+  // 6. Publishing
+  isPublished: boolean;
+
+  // 7. System computed (optional cache)
+  status?: PromotionComputedStatus;
+
+  // Optional metadata
   created_at: Date;
   updated_at: Date;
+
+  // Legacy fields (compatibility only)
+  promotion_type?: PromotionType;
+  offer_type?: RestaurantOfferType;
+  menu_item_id?: string;
+  discount_value?: number;
+  offer_details?: string;
+  start_date?: Date;
+  end_date?: Date;
 }
 
 export type PromotionStatus = "active" | "inactive" | "scheduled" | "expired";
 
 export interface CreatePromotionInput {
+  // 1. Scope (WHERE)
+  scope: PromotionScope;
+
+  // 2. Content
   title: string;
   description: string;
   image?: string;
-  start_date: Date;
-  end_date: Date;
-  status: PromotionStatus;
-  promotion_type: PromotionType;
-  offer_type?: RestaurantOfferType; // Only for restaurant promotions
-  discount_value?: number; // For percentage restaurant offers
-  offer_details?: string; // For non-discount restaurant offers
-  menu_item_id?: string; // Optional - only for menu_discount type
-  discount_percentage?: number; // Only for menu_discount type
+
+  // 3. Benefit (WHAT)
+  benefitType: PromotionBenefitType;
+  benefitValue?: number; // for percentage
+  benefitText?: string; // for non-discount
+
+  // 4. Target (ONLY if menu_item)
+  menuItemId?: string;
+
+  // 5. Time
+  startAt: Date;
+  endAt: Date;
+
+  // 6. Publishing
+  isPublished: boolean;
+
+  // Legacy fields (compatibility only)
+  promotion_type?: PromotionType;
+  offer_type?: RestaurantOfferType;
+  menu_item_id?: string;
+  discount_value?: number;
+  offer_details?: string;
+  start_date?: Date;
+  end_date?: Date;
+  status?: PromotionComputedStatus | "inactive";
 }
 
 export interface UpdatePromotionInput extends Partial<CreatePromotionInput> {
