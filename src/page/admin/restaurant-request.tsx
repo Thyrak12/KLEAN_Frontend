@@ -18,6 +18,7 @@ import toast from "react-hot-toast";
 import type { RestaurantRequest } from "../../types/restaurantRequest";
 import {
   getRequestsByStatus,
+  getAllRestaurantRequests,
   approveRestaurantRequest,
   rejectRestaurantRequest,
 } from "../../features/restaurantRequest/restaurantRequestService";
@@ -34,6 +35,7 @@ export default function AdminRestaurantRequests() {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("Newest");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [selectedRequest, setSelectedRequest] = useState<DisplayRequest | null>(
     null,
   );
@@ -47,14 +49,19 @@ export default function AdminRestaurantRequests() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch pending requests from Firestore
+  // Fetch requests from Firestore (all or by status)
   useEffect(() => {
     const fetchRequests = async () => {
       try {
         setLoading(true);
         setError(null);
-        const pendingRequests = await getRequestsByStatus("pending");
-        setRequests(pendingRequests as DisplayRequest[]);
+        let fetched: RestaurantRequest[] = [];
+        if (statusFilter === "all") {
+          fetched = await getAllRestaurantRequests();
+        } else {
+          fetched = await getRequestsByStatus(statusFilter as any);
+        }
+        setRequests(fetched as DisplayRequest[]);
       } catch (err) {
         console.error("Error fetching requests:", err);
         setError("Failed to fetch restaurant requests");
@@ -64,7 +71,7 @@ export default function AdminRestaurantRequests() {
     };
 
     fetchRequests();
-  }, []);
+  }, [statusFilter]);
 
   const openModal = (request: DisplayRequest) => {
     setSelectedRequest(request);
@@ -198,7 +205,11 @@ export default function AdminRestaurantRequests() {
       {/* Empty State */}
       {!loading && filtered.length === 0 && !error && (
         <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">No pending restaurant requests</div>
+          <div className="text-gray-500">
+            {statusFilter === "all"
+              ? "No restaurant requests"
+              : `No ${statusFilter} restaurant requests`}
+          </div>
         </div>
       )}
 
@@ -222,18 +233,37 @@ export default function AdminRestaurantRequests() {
           />
         </div>
 
-        {/* Sort */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">Short by :</span>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400"
-          >
-            <option>Newest</option>
-            <option>Oldest</option>
-            <option>Name</option>
-          </select>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">Status :</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as any);
+                setCurrentPage(1);
+              }}
+              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              <option value="all">All</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+
+          {/* Sort */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">Short by :</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              <option>Newest</option>
+              <option>Oldest</option>
+              <option>Name</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -260,9 +290,8 @@ export default function AdminRestaurantRequests() {
               <th className="py-3 px-4 text-left font-semibold text-xs">
                 Location
               </th>
-              <th className="py-3 px-4 text-left font-semibold text-xs">
-                Submitted Date
-              </th>
+              <th className="py-3 px-4 text-left font-semibold text-xs">Status</th>
+              <th className="py-3 px-4 text-left font-semibold text-xs">Submitted Date</th>
               <th className="py-3 px-4 text-center font-semibold text-xs">
                 Action
               </th>
@@ -271,8 +300,10 @@ export default function AdminRestaurantRequests() {
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-gray-500">
-                  No pending restaurant requests
+                <td colSpan={9} className="py-8 text-center text-gray-500">
+                  {statusFilter === "all"
+                    ? "No restaurant requests"
+                    : `No ${statusFilter} restaurant requests`}
                 </td>
               </tr>
             ) : (
@@ -301,6 +332,20 @@ export default function AdminRestaurantRequests() {
                   <td className="py-2.5 px-4 text-gray-700 text-xs">
                     {request.location || "-"}
                   </td>
+                  <td className="py-2.5 px-4 text-xs">
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${
+                        request.status === "pending"
+                          ? "bg-amber-100 text-amber-700"
+                          : request.status === "approved"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {request.status}
+                    </span>
+                  </td>
+
                   <td className="py-2.5 px-4 text-gray-700 text-xs">
                     {request.createdAt
                       ? new Date(request.createdAt).toLocaleDateString()

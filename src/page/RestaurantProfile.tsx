@@ -253,6 +253,60 @@ const emptyProfile: RestaurantData = {
   priceMax: "",
 };
 
+const splitTimeParts = (timeValue?: string) => {
+  const safeValue = String(timeValue ?? "").trim();
+  if (!safeValue) return { hour: "", minute: "" };
+
+  const [hourPart = "", minutePart = ""] = safeValue.split(":");
+  return {
+    hour: hourPart.replace(/\D/g, "").slice(0, 2),
+    minute: minutePart.replace(/\D/g, "").slice(0, 2),
+  };
+};
+
+const buildTimeValue = (hour?: string, minute?: string) => {
+  const cleanHour = String(hour ?? "").replace(/\D/g, "").slice(0, 2);
+  const cleanMinute = String(minute ?? "").replace(/\D/g, "").slice(0, 2);
+
+  if (cleanHour && cleanMinute) {
+    return `${cleanHour.padStart(2, "0")}:${cleanMinute.padStart(2, "0")}`;
+  }
+
+  return cleanHour ? cleanHour.padStart(2, "0") : "";
+};
+
+const normalizeRestaurantData = (
+  rawData: Partial<RestaurantData> & { openingHours?: string }
+): RestaurantData => {
+  const merged = { ...emptyProfile, ...rawData };
+
+  const openFromField = splitTimeParts(rawData.openHour);
+  const closeFromField = splitTimeParts(rawData.closeHour);
+
+  let openFromRange = { hour: "", minute: "" };
+  let closeFromRange = { hour: "", minute: "" };
+
+  if (rawData.openingHours) {
+    const [openRaw = "", closeRaw = ""] = String(rawData.openingHours).split("-");
+    openFromRange = splitTimeParts(openRaw.trim());
+    closeFromRange = splitTimeParts(closeRaw.trim());
+  }
+
+  return {
+    ...merged,
+    openHour: merged.openHour.includes(":")
+      ? openFromField.hour || openFromRange.hour
+      : merged.openHour,
+    openMinute:
+      merged.openMinute || openFromField.minute || openFromRange.minute || "",
+    closeHour: merged.closeHour.includes(":")
+      ? closeFromField.hour || closeFromRange.hour
+      : merged.closeHour,
+    closeMinute:
+      merged.closeMinute || closeFromField.minute || closeFromRange.minute || "",
+  };
+};
+
 export default function RestaurantProfileInfo() {
   const [profile, setProfile] = useState<RestaurantData>(emptyProfile);
   const [editData, setEditData] = useState<RestaurantData>(emptyProfile);
@@ -278,9 +332,12 @@ export default function RestaurantProfileInfo() {
 
           if (docSnap.exists()) {
             // Data exists! Load it into the form
-            const data = docSnap.data() as RestaurantData;
-            setProfile({ ...emptyProfile, ...data });
-            setEditData({ ...emptyProfile, ...data });
+            const data = docSnap.data() as Partial<RestaurantData> & {
+              openingHours?: string;
+            };
+            const normalized = normalizeRestaurantData(data);
+            setProfile(normalized);
+            setEditData(normalized);
           } else {
             // They are logged in, but haven't saved any profile info yet.
             // The form will stay empty so they can fill it out!
@@ -329,8 +386,23 @@ export default function RestaurantProfileInfo() {
     if (!uid) return;
     setIsSaving(true);
     try {
+      const openTimeValue = buildTimeValue(editData.openHour, editData.openMinute);
+      const closeTimeValue = buildTimeValue(editData.closeHour, editData.closeMinute);
+
       const docRef = doc(db, "restaurants", uid);
-      await setDoc(docRef, { ...editData }, { merge: true });
+      await setDoc(
+        docRef,
+        {
+          ...editData,
+          openHour: openTimeValue || editData.openHour,
+          closeHour: closeTimeValue || editData.closeHour,
+          openingHours:
+            openTimeValue && closeTimeValue
+              ? `${openTimeValue} - ${closeTimeValue}`
+              : openTimeValue || closeTimeValue || "",
+        },
+        { merge: true }
+      );
 
       setProfile({ ...editData });
       setHasChanges(false);
