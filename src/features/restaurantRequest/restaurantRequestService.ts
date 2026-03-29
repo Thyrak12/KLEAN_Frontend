@@ -28,6 +28,36 @@ emailjs.init(EMAILJS_PUBLIC_KEY);
 
 const COLLECTION_NAME = "restaurantRequests";
 
+function hasEmailJsConfig(): boolean {
+  return (
+    EMAILJS_SERVICE_ID !== "YOUR_SERVICE_ID" &&
+    EMAILJS_TEMPLATE_ID !== "YOUR_TEMPLATE_ID" &&
+    EMAILJS_PUBLIC_KEY !== "YOUR_PUBLIC_KEY"
+  );
+}
+
+async function resolveOwnerEmail(
+  requestData: RestaurantRequest & { uid?: string; userId?: string },
+  ownerId?: string
+): Promise<string> {
+  const fromRequest = requestData.email?.trim();
+  if (fromRequest) return fromRequest;
+
+  if (!ownerId) return "";
+
+  try {
+    const ownerUserSnap = await getDoc(doc(db, "users", ownerId));
+    if (ownerUserSnap.exists()) {
+      const userEmail = ownerUserSnap.data().email;
+      if (typeof userEmail === "string") return userEmail.trim();
+    }
+  } catch (error) {
+    console.warn("Failed to resolve owner email from user profile:", error);
+  }
+
+  return "";
+}
+
 // Add a new restaurant request
 export async function createRestaurantRequest(
   requestData: Omit<RestaurantRequest, "id" | "createdAt" | "updatedAt">
@@ -282,17 +312,16 @@ export async function approveRestaurantRequest(requestId: string): Promise<strin
 
     await batch.commit();
 
-    // Return the resolved owner id so callers can navigate or show links
-    return resolvedOwnerId;
-
     // Send approval email notification to the restaurant owner
     try {
-      const ownerEmail = requestData.email;
+      const ownerEmail = await resolveOwnerEmail(requestData, resolvedOwnerId);
       const restaurantName = requestData.restaurantName;
-      
-      if (ownerEmail) {
+
+      if (!hasEmailJsConfig()) {
+        console.warn("EmailJS is not configured. Skipping approval email notification.");
+      } else if (ownerEmail) {
         console.log("Sending approval email to:", ownerEmail);
-        
+
         await emailjs.send(
           EMAILJS_SERVICE_ID,
           EMAILJS_TEMPLATE_ID,
@@ -319,11 +348,16 @@ If you have any questions, please don't hesitate to contact our support team.`,
           EMAILJS_PUBLIC_KEY
         );
         console.log("Approval email sent successfully to:", ownerEmail);
+      } else {
+        console.warn("Approval email skipped: owner email not found on request/user profile.");
       }
     } catch (emailError) {
       console.error("Failed to send approval email:", emailError);
       // Don't throw - email failure shouldn't block the approval process
     }
+
+    // Return the resolved owner id so callers can navigate or show links
+    return resolvedOwnerId;
   } catch (error) {
     console.error("Error approving restaurant request:", error);
     throw error;
@@ -365,10 +399,12 @@ export async function rejectRestaurantRequest(
 
     // Send rejection email notification
     try {
-      const ownerEmail = requestData.email;
+      const ownerEmail = await resolveOwnerEmail(requestData, ownerId);
       const restaurantName = requestData.restaurantName;
 
-      if (ownerEmail) {
+      if (!hasEmailJsConfig()) {
+        console.warn("EmailJS is not configured. Skipping rejection email notification.");
+      } else if (ownerEmail) {
         console.log("Sending rejection email to:", ownerEmail);
 
         await emailjs.send(
@@ -399,6 +435,8 @@ If you have any questions, please contact our support team at support@dineflow.c
           EMAILJS_PUBLIC_KEY
         );
         console.log("Rejection email sent successfully to:", ownerEmail);
+      } else {
+        console.warn("Rejection email skipped: owner email not found on request/user profile.");
       }
     } catch (emailError) {
       console.error("Failed to send rejection email:", emailError);

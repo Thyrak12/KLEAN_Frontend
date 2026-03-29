@@ -1,0 +1,46 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdminFromToken() {
+      return isSignedIn() && (
+        request.auth.token.role == 'super_admin' ||
+        request.auth.token.role == 'admin' ||
+        request.auth.token.admin == true
+      );
+    }
+
+    function isAdminUser() {
+      return isAdminFromToken();
+    }
+
+    // Onboarding cover image upload path:
+    // restaurant_covers/{uid}_{timestamp}
+    match /restaurant_covers/{imageName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (
+        imageName.matches('^' + request.auth.uid + '_.*$') ||
+        isAdminUser()
+      );
+    }
+
+    // Menu item image upload path:
+    // menu_items/{uid}/{filename}
+    match /menu_items/{uid}/{fileName=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (
+        request.auth.uid == uid ||
+        isAdminUser()
+      );
+    }
+
+    // Deny anything else by default.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

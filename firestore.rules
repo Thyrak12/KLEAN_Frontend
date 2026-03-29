@@ -2,29 +2,46 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the current user is a super admin
-    function isSuperAdmin() {
-      return request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
+    // Helper function for privileged admin role via custom claims.
+    function isAdminFromToken() {
+      return request.auth != null && (
+        request.auth.token.role == 'super_admin' ||
+        request.auth.token.role == 'admin' ||
+        request.auth.token.admin == true
+      );
     }
 
-    // Chats: each user can only read/write their own messages.
+    // Fallback for existing apps that store role in /users/{uid}.
+    function isAdminFromProfile() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        );
+    }
+
+    function isAdminUser() {
+      return isAdminFromToken() || isAdminFromProfile();
+    }
+
+    // Chats: each user can only read/write their own messages. Admin users may access all chats.
     match /chats/{uid}/messages/{messageId} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if request.auth != null && (request.auth.uid == uid || isAdminUser());
     }
 
-    // Restaurants: anyone authenticated can read; owner or super admin can write.
+    // Restaurants: anyone authenticated can read; owner or admin can write.
     match /restaurants/{restaurantId} {
       allow read: if request.auth != null;
-      // Allow super_admin to create/edit on behalf of the owner
-      allow create: if request.auth != null && (request.auth.uid == request.resource.data.uid || isSuperAdmin());
-      allow update, delete: if request.auth != null && (request.auth.uid == resource.data.uid || isSuperAdmin());
+      // Allow admin to create/edit on behalf of the owner
+      allow create: if request.auth != null && (request.auth.uid == request.resource.data.uid || isAdminUser());
+      allow update, delete: if request.auth != null && (request.auth.uid == resource.data.uid || isAdminUser());
 
       // Menus & Reviews subcollections
       match /menus/{menuId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null
-          && (request.auth.uid == get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.uid || isSuperAdmin());
+          && (request.auth.uid == get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.uid || isAdminUser());
 
         match /reviews/{reviewId} {
           allow read: if request.auth != null;
@@ -33,7 +50,7 @@ service cloud.firestore {
             && (
               (resource.data.userId is string && request.auth.uid == resource.data.userId) ||
               (resource.data.user_id is string && request.auth.uid == resource.data.user_id) || 
-              isSuperAdmin()
+              isAdminUser()
             );
         }
       }
@@ -41,7 +58,7 @@ service cloud.firestore {
       match /menu_items/{menuId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null
-          && (request.auth.uid == get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.uid || isSuperAdmin());
+          && (request.auth.uid == get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.uid || isAdminUser());
 
         match /reviews/{reviewId} {
           allow read: if request.auth != null;
@@ -50,7 +67,7 @@ service cloud.firestore {
             && (
               (resource.data.userId is string && request.auth.uid == resource.data.userId) ||
               (resource.data.user_id is string && request.auth.uid == resource.data.user_id) ||
-              isSuperAdmin()
+              isAdminUser()
             );
         }
       }
@@ -62,7 +79,7 @@ service cloud.firestore {
           && (
             (resource.data.userId is string && request.auth.uid == resource.data.userId) ||
             (resource.data.user_id is string && request.auth.uid == resource.data.user_id) ||
-            isSuperAdmin()
+            isAdminUser()
           );
       }
 
@@ -70,37 +87,49 @@ service cloud.firestore {
       match /promotions/{promotionId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null
-          && (request.auth.uid == get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.uid || isSuperAdmin());
+          && (request.auth.uid == get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.uid || isAdminUser());
       }
     }
 
     // User profiles: users can access their own; super admins can access/modify all.
+    // Only super admins can list all users.
     match /users/{userId} {
-      allow read, write: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
+      allow get: if request.auth != null && (request.auth.uid == userId || isAdminUser());
+      allow list: if request.auth != null && isAdminUser();
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update, delete: if request.auth != null && (request.auth.uid == userId || isAdminUser());
     }
 
     // Restaurant Requests
     match /restaurantRequests/{requestId} {
-      allow read: if request.auth != null && (
+      // Single document access: owner or super admin
+      allow get: if request.auth != null && (
         resource.data.ownerId == request.auth.uid ||
         resource.data.uid == request.auth.uid ||
-        isSuperAdmin()
+        isAdminUser()
+      );
+
+      // Listing: super admins can list all. Owners can list only their own documents.
+      allow list: if request.auth != null && (
+        isAdminUser() ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.uid == request.auth.uid
       );
 
       // Owner creates own request
       allow create: if request.auth != null && (
         request.resource.data.ownerId == request.auth.uid ||
         request.resource.data.uid == request.auth.uid ||
-        isSuperAdmin()
+        isAdminUser()
       );
 
-      // Super Admins can update/approve, owner can ONLY update if you explicitly want them to edit prior to approval
+      // Super Admins can update/approve, owner can update before approval
       allow update: if request.auth != null && (
         (request.resource.data.ownerId == request.auth.uid || request.resource.data.uid == request.auth.uid) ||
-        isSuperAdmin()
+        isAdminUser()
       );
 
-      allow delete: if isSuperAdmin();
+      allow delete: if isAdminUser();
     }
 
     match /{document=**} {

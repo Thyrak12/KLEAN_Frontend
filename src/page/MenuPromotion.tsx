@@ -7,6 +7,16 @@ import MenuItemModal from "../components/MenuItemModal";
 import PromotionModal from "../components/PromotionModal";
 import ConfirmModal from "../components/ConfirmModal";
 
+const DEFAULT_PROMOTION_IMAGE = "https://via.placeholder.com/400x220?text=Promotion";
+const DEFAULT_MENU_IMAGE = "https://via.placeholder.com/150?text=No+Image";
+
+const getSafeImageSrc = (image?: string, fallback = DEFAULT_PROMOTION_IMAGE): string => {
+  if (!image) return fallback;
+  const trimmed = image.trim();
+  if (!trimmed || trimmed === "undefined" || trimmed === "null") return fallback;
+  return trimmed;
+};
+
 // ── Menu Card ──────────────────────────────────────────────
 function MenuCard({
   item,
@@ -67,7 +77,10 @@ function PromotionCard({
   onEdit: (promotion: Promotion) => void;
   onDelete: (promotion: Promotion) => void;
 }) {
-  const isMenuDiscount = promotion.promotion_type === "menu_discount";
+  const isMenuDiscount =
+    promotion.promotion_type === "menu_discount" ||
+    promotion.scope === "menu_item" ||
+    !!(promotion.menuItemId || promotion.menu_item_id);
   const originalPrice = menuItem?.price || 0;
   const discountRate = promotion.discount_value || promotion.benefitValue || 0;
   const discountedPrice = originalPrice * (1 - discountRate / 100);
@@ -126,9 +139,13 @@ function PromotionCard({
         </h4>
         <div className="w-full h-36 rounded-xl overflow-hidden bg-amber-100 mb-3">
           <img
-            src={promotion.image || "https://via.placeholder.com/400x220?text=Promotion"}
+            src={getSafeImageSrc(promotion.image, DEFAULT_PROMOTION_IMAGE)}
             alt={promotion.title}
             className="w-full h-full object-cover"
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = DEFAULT_PROMOTION_IMAGE;
+            }}
           />
         </div>
         <div className="mb-2">
@@ -184,9 +201,13 @@ function PromotionCard({
 
       <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-100 shadow-md mt-4">
         <img
-          src={menuItem?.image || "https://via.placeholder.com/150?text=No+Image"}
+          src={getSafeImageSrc(menuItem?.image, DEFAULT_MENU_IMAGE)}
           alt={menuItem?.item_name || "Promotion"}
           className="w-full h-full object-cover"
+          onError={(event) => {
+            event.currentTarget.onerror = null;
+            event.currentTarget.src = DEFAULT_MENU_IMAGE;
+          }}
         />
       </div>
       <h4 className="text-base font-semibold text-gray-900 text-center">

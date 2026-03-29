@@ -113,7 +113,17 @@ export default function AdminRestaurantRequests() {
         // Friendly toast message (no absolute localhost URLs)
         toast.success(`Approved: ${request.restaurantName}. Restaurant created.`);
         console.log(`Restaurant created for ownerId: ${ownerId}`);
-        setRequests(requests.filter((r) => r.id !== request.id));
+        setRequests((prev) =>
+          prev.map((r) =>
+            r.id === request.id
+              ? {
+                  ...r,
+                  status: "approved",
+                  updatedAt: Date.now(),
+                }
+              : r
+          )
+        );
         closeModal();
       }
     } catch (err: unknown) {

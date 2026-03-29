@@ -31,6 +31,10 @@ const normalizeScope = (value: unknown): PromotionScope => {
   return "overall";
 };
 
+const toPromotionType = (scope: PromotionScope): "restaurant" | "menu_discount" => {
+  return scope === "menu_item" ? "menu_discount" : "restaurant";
+};
+
 const normalizeBenefitType = (value: unknown, docData: Record<string, unknown>): PromotionBenefitType => {
   if (value === "percentage" || value === "non_discount") return value;
 
@@ -216,6 +220,7 @@ export async function fetchPromotions(): Promise<Promotion[]> {
     const data = promotionDoc.data();
 
     const scope = normalizeScope(data.scope ?? data.promotion_type);
+    const promotionType = toPromotionType(scope);
     const benefitType = normalizeBenefitType(data.benefitType, data);
     const benefitValue = Number(data.benefitValue ?? data.discount_value ?? 0) || 0;
     const benefitText = String(data.benefitText ?? data.offer_details ?? "");
@@ -234,6 +239,7 @@ export async function fetchPromotions(): Promise<Promotion[]> {
       id: promotionDoc.id,
       restaurant_id: userId,
       scope,
+      promotion_type: promotionType,
       title: data.title || "",
       description: data.description || "",
       image: data.image || "",
@@ -260,6 +266,7 @@ export async function createPromotion(input: CreatePromotionInput): Promise<Prom
   const promoRef = collection(db, "restaurants", userId, "promotions");
 
   const scope = input.scope ?? normalizeScope(input.promotion_type);
+  const promotionType = toPromotionType(scope);
   const benefitType = input.benefitType ?? (input.offer_type === "percentage" ? "percentage" : "non_discount");
   const benefitValue =
     input.benefitValue ?? input.discount_value ?? 0;
@@ -279,6 +286,7 @@ export async function createPromotion(input: CreatePromotionInput): Promise<Prom
   const docRef = await addDoc(promoRef, {
     restaurant_id: userId,
     scope,
+    promotion_type: promotionType,
     title: input.title,
     description: input.description,
     image: input.image || "",
@@ -302,6 +310,7 @@ export async function createPromotion(input: CreatePromotionInput): Promise<Prom
     id: docRef.id,
     restaurant_id: userId,
     scope,
+    promotion_type: promotionType,
     title: input.title,
     description: input.description,
     image: input.image,
@@ -357,6 +366,13 @@ export async function updatePromotion(input: UpdatePromotionInput): Promise<Prom
   const updateEnd = input.endAt ?? input.end_date;
   const updatePublished = input.isPublished ?? (input.status !== undefined ? input.status !== "inactive" : undefined);
 
+  const finalScopeForType =
+    input.scope ??
+    (input.promotion_type !== undefined ? normalizeScope(input.promotion_type) : undefined);
+  if (finalScopeForType !== undefined) {
+    updateData.promotion_type = toPromotionType(finalScopeForType);
+  }
+
   if (updateStart || updateEnd || updatePublished !== undefined) {
     const currentDoc = await getDoc(docRef);
     const currentData = currentDoc.data() || {};
@@ -383,6 +399,7 @@ export async function updatePromotion(input: UpdatePromotionInput): Promise<Prom
     id: input.id,
     restaurant_id: userId,
     scope: normalizeScope(data?.scope ?? data?.promotion_type),
+    promotion_type: toPromotionType(normalizeScope(data?.scope ?? data?.promotion_type)),
     title: data?.title,
     description: data?.description || "",
     image: data?.image || "",
